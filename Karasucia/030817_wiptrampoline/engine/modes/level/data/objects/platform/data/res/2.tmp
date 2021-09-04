@@ -1,0 +1,10 @@
+@frame_0:
+		dc.w $5
+
+		dc.w $7000
+		dc.w $7008
+		dc.w $7010
+		dc.w $7018
+		dc.w $1020
+@frame_1:
+		dc.w $00

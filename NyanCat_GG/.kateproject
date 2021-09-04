@@ -1,0 +1,4 @@
+{
+  "name": "WAVE"
+, "files": [ { "directory": "/home/kevin/Documents/games/emus/sega/md/utils/projects/MERCURY/WAVE", "filters": "*.asm", "recursive": 1 } ]
+}

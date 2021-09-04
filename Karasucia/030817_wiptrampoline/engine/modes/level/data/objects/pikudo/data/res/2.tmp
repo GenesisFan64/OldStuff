@@ -1,0 +1,24 @@
+@frame_0:
+		dc.w $3
+
+		dc.w $30,$0
+		dc.w $30,$4
+		dc.w $80,$8
+@frame_1:
+		dc.w $3
+
+		dc.w $30,$11
+		dc.w $30,$15
+		dc.w $80,$19
+@frame_2:
+		dc.w $3
+
+		dc.w $30,$22
+		dc.w $30,$26
+		dc.w $80,$2A
+@frame_3:
+		dc.w $3
+
+		dc.w $30,$33
+		dc.w $30,$37
+		dc.w $80,$3B

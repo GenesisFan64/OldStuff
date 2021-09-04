@@ -1,0 +1,4 @@
+{
+  "name": "MegaVid"
+, "files": [ { "directory": "/home/kevin/Documents/games/emus/sega/md/utils/projects/MegaVid/", "filters": "*.asm", "recursive": 1 } ]
+}

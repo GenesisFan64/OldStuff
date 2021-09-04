@@ -1,0 +1,4 @@
+{
+  "name": "GennyGear"
+, "files": [ { "directory": "/home/kevin/Documents/games/emus/sega/md/utils/projects/MERCURY/GennyGear/", "filters": "*.asm", "recursive": 1 } ]
+}

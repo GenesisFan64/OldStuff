@@ -1,0 +1,3416 @@
+0000                      ; ====================================================================
+0000                      ; -------------------------------------------------
+0000                      ; Gennypher for Game Gear
+0000                      ; -------------------------------------------------
+0000                      
+0000                      		include "incl/macros.asm"
+0000                      ; ====================================================================
+0000                      ; -------------------------------------------------
+0000                      ; MACROS
+0000                      ; -------------------------------------------------
+0000                      
+0000                      ; -------------------------------------------------
+0000                      ; Slot 2 bankswitch
+0000                      ; -------------------------------------------------
+0000                      
+0000                      bankdata macro LABEL
+0000                      	ld	a,(LABEL>>14)&0FFh
+0000                      	ld      (0FFFEh),a
+0000                      	endm
+0000                      	endm
+0000                      		include "ram.asm"
+0000                      ; ====================================================================
+0000                      ; -------------------------------------------------
+0000                      ; Variables
+0000                      ; -------------------------------------------------
+0000                      
+0000 =000000D0            bitFrameWait		equ	0
+0000 =000000E5            bitVBlankWait		equ	1
+0000 =000000FA            bitHBlankWait		equ	2
+0000 =00000111            bitDontWaitHInt		equ	3
+0000 =00000124            bitLockPads		equ	4
+0000 =00000137            bitHotStart		equ	5
+0000 =00000148            bitVerDir		equ	6
+0000                      
+0000                      ; -------------------------------------------------
+0000                      ; RAM
+0000                      ; -------------------------------------------------
+0000                      
+0000                      			rsset 0C000h
+0000 =000001E0            ram_modebuffer		rb 100h
+0000 =000001F9            ram_sounddriver		rb 0FFh
+0000 =00000210            ram_palbuffer		rb 32*2
+0000 =00000229            ram_palfadebuff		rb 32*2
+0000 =00000240            ram_sprbuffer		rb 100h
+0000                      
+0000 =00000253            ram_vscroll		rb 1
+0000 =00000265            ram_hscroll		rb 1
+0000 =00000278            ram_vintwait		rb 1
+0000 =0000028D            ram_vintframes		rb 1
+0000 =000002A4            ram_runfadecol		rb 10h
+0000 =000002B7            ram_temporal		rb 8
+0000 =000002C9            ram_joypads		rb 8
+0000 =000002DC            ram_gamemode		rb 1
+0000                      
+0000                      ; 			inform 0,"%h",ram_sounddriver
+0000                      
+0000                      
+0000                      		
+0000                      ; ====================================================================
+0000                      ; -------------------------------------------------
+0000                      ; Game starts
+0000                      ; -------------------------------------------------
+0000                      
+0000                      		org     0
+0000 F3                   		di
+0001 ED 56                		im      1
+0003 31 F8 DF             		ld      sp,0DFF8h
+0006 C3 00 00             		jp      Init
+0009                      
+0009                      ; ====================================================================
+0009                      ; -------------------------------------------------
+0009                      ; IRQ
+0009                      ; -------------------------------------------------
+0009                      
+0009                      		include "ints.asm"
+0009                      ; ====================================================================
+0009                      ; -------------------------------------------------
+0009                      ; IRQ
+0009                      ; -------------------------------------------------
+0009                      
+0009                      		org     38h		; AT 38h: Vblank interrupt
+0038 F3                   		di
+0039 D9                   		exx
+003A F5                   		push    af
+003B C5                   		push	bc
+003C D5                   		push	de
+003D D9                   		exx
+003E F5                   		push	af
+003F C5                   		push	bc
+0040 D5                   		push	de
+0041 E5                   		push	hl
+0042 DD E5                		push	ix
+0044 FD E5                		push	iy
+0046                      		
+0046 DB 00                		in      a,(Vcom)
+0048 E6 80                		and	%10000000
+004A 20 00                		jr	nz,@its_vint
+004C CD 00 00             		call	HBlank
+004F 18 00                		jr	@cont_irq
+0051                      @its_vint:
+0051 CD 00 00             		call	VBlank
+0054                      @cont_irq:
+0054 FD E1                		pop	iy
+0056 DD E1                		pop	ix
+0058 E1                   		pop	hl
+0059 D1                   		pop	de
+005A C1                   		pop	bc
+005B F1                   		pop     af
+005C D9                   		exx
+005D D1                   		pop	de
+005E C1                   		pop	bc
+005F F1                   		pop     af
+0060 D9                   		exx
+0061 FB                   		ei
+0062 ED 45                		retn
+0064                      
+0064                      ; ====================================================================
+0064                      ; -------------------------------------------------
+0064                      ; SMS PAUSE
+0064                      ; -------------------------------------------------
+0064                      
+0064                      		org     66h		; SMS pause button
+0066 F5                   		push	af
+0067 3A 00 00             		ld	a,(ram_joypads+on_hold)
+006A CB C7                		set 	bitJoyStart,a
+006C 32 00 00             		ld	(ram_joypads+on_hold),a
+006F 3A 00 00             		ld	a,(ram_joypads+on_press)
+0072 CB C7                		set 	bitJoyStart,a
+0074 32 00 00             		ld	(ram_joypads+on_press),a
+0077 F1                   		pop	af
+0078 ED 45                		retn	
+007A                      
+007A                      ; ====================================================================
+007A                      ; -------------------------------------------------
+007A                      ; VBlank
+007A                      ; -------------------------------------------------
+007A                      
+007A                      VBlank:		
+007A CD 00 00             		call	palfade
+007D CD 00 00             		call	pads_read
+0080                      		
+0080                      ; --------------------
+0080                      ; Horizontal scroll
+0080                      ; --------------------
+0080                      
+0080 21 80 C3             		ld      hl,ram_hscroll
+0083 7E                   		ld	a,(hl)
+0084 C6 08                  		add	8h		;TODO: nah, luego pensarlo
+0086 D3 00                		out     (Vcom),a
+0088 3E 88                		ld      a,088h
+008A D3 00                		out     (Vcom),a
+008C                      		
+008C                      ; --------------------
+008C                      ; GG Ver Scroll
+008C                      ; --------------------
+008C                      
+008C                      		
+008C                      ; --------------------
+008C                      ; SMS Ver Scroll
+008C                      ; --------------------
+008C                      
+008C 21 7F C3             		ld      hl,ram_vscroll
+008F 3A 81 C3              		ld	a,(ram_vintwait)
+0092 CB 77                    		bit 	bitVerDir,a
+0094 C2 00 00                 		jp	nz,@ms_verup
+0097 7E                   		ld      a,(hl)
+0098 FE E0                		cp	0E0h
+009A DA 00 00             		jp	c,@dontfix_u
+009D AF                   		xor	a
+009E 77                   		ld	(hl),a
+009F                      @dontfix_u:
+009F 18 00                		jr	@cont_msver
+00A1                      @ms_verup:
+00A1 7E                   		ld      a,(hl)
+00A2 FE E0                		cp	0E0h
+00A4 DA 9F 00             		jp	c,@dontfix_u
+00A7 3E DF                		ld	a,0DFh
+00A9 77                   		ld	(hl),a
+00AA                      @cont_msver:
+00AA                      
+00AA                      ; --------------------
+00AA                      
+00AA                         		
+00AA D3 00                		out     (Vcom),a
+00AC 3E 89                		ld      a,089h
+00AE D3 00                		out     (Vcom),a
+00B0                      	
+00B0                      ; --------------------
+00B0                      ; Palette
+00B0                      ; --------------------
+00B0                       		
+00B0 3E 00                		ld	a,0
+00B2 D3 00                 		out     (Vcom),a
+00B4 3E 00                 		ld      a,Vcolor
+00B6 D3 00                 		out     (Vcom),a
+00B8 21 FF C1             		ld	hl,ram_palbuffer
+00BB 06 20                		ld	b,32
+00BD 0E 00                 		ld 	c,Vdata	
+00BF ED B3                 		otir	
+00C1                      
+00C1                      ; --------------------
+00C1                      ; Sprites
+00C1                      ; --------------------
+00C1                      
+00C1 21 7F C2             		ld	hl,ram_sprbuffer
+00C4 06 3F                		ld	b,03Fh
+00C6 0E 00                		ld	c,0
+00C8                      @next_spr:
+00C8 AF                   		xor	a			;Vertical data
+00C9 81                   		add 	c
+00CA D3 00                		out	(Vcom),a
+00CC 3E 7F                		ld	a,3Fh|40h
+00CE D3 00                		out	(Vcom),a
+00D0 7E                   		ld      a,(hl)
+00D1 3D                   		dec	a
+00D2 23                   		inc	hl
+00D3 D3 00                		out     (Vdata),a
+00D5 F5                   		push    af
+00D6 F1                   		pop     af
+00D7                      		
+00D7 3E 80                		ld	a,80h			;Horizontal and char data
+00D9 81                   		add 	c
+00DA 81                   		add 	c
+00DB D3 00                		out	(Vcom),a
+00DD 3E 7F                		ld	a,3Fh|40h
+00DF D3 00                		out	(Vcom),a
+00E1 7E                   		ld      a,(hl)
+00E2 23                   		inc	hl
+00E3 D3 00                		out     (Vdata),a
+00E5 F5                   		push    af
+00E6 F1                   		pop     af
+00E7 7E                   		ld      a,(hl)
+00E8 23                   		inc	hl
+00E9 D3 00                		out     (Vdata),a
+00EB F5                   		push    af
+00EC F1                   		pop     af
+00ED                      		
+00ED                      		;Options
+00ED                      ; 		ld	a,(hl)
+00ED                      ; 		inc	hl
+00ED 0C                   		inc	c
+00EE 10 D8                 		djnz	@next_spr
+00F0                      	
+00F0                      ; --------------------
+00F0                      ; Frame count
+00F0                      ; --------------------
+00F0                      
+00F0 3A 82 C3              		ld	a,(ram_vintframes)
+00F3 3C                    		inc 	a
+00F4 32 82 C3              		ld	(ram_vintframes),a
+00F7                       		
+00F7                      ; --------------------
+00F7                      ; VSync done
+00F7                      ; --------------------
+00F7                       		
+00F7 3A 81 C3              		ld	a,(ram_vintwait)
+00FA CB 87                 		res	bitFrameWait,a
+00FC 32 81 C3              		ld	(ram_vintwait),a
+00FF                       		
+00FF CD 00 00              		call	SMEG_Upd
+0102 ED 45                		retn
+0104                      
+0104                      ; -------------------------------------------------
+0104                      ; HBlank
+0104                      ; -------------------------------------------------
+0104                      
+0104                      HBlank:
+0104 ED 45                		retn
+0106                      		
+0106                      		
+0106                      		
+0106                      ; ====================================================================
+0106                      ; -------------------------------------------------
+0106                      ; Subs
+0106                      ; -------------------------------------------------
+0106                      
+0106                      		include "subs/vdp.asm"
+0106                      ; ====================================================================
+0106                      ; -------------------------------------------------
+0106                      ; VDP
+0106                      ; -------------------------------------------------
+0106                      
+0106                      ; Resolutions:
+0106                      ; MS: 256x192
+0106                      ; GG: 160x144 (center)
+0106                      
+0106                      ; GG SPRITES AT TOP SCREEN:
+0106                      ; Y 17h X 30h
+0106                      
+0106 =00000158            Vcom            equ     0BFh    ; ADDRESS SETUP FOR VDP REGISTERS
+0106 =000001A7            Vdata           equ     0BEh    ; WRITE OR READ DATA ADDRESS FOR VDP REGISTERS
+0106 =000001E1            Writemask       equ     040h    ; SETS VRAM TO WRITE MODE
+0106 =0000022A            Vcolor          equ     0C0h    ; VALUE OF 2nd BYTE FOR COLOR VRAM WRITE
+0106 =00000278            Vreg            equ     080h    ; STARTING LOCATION OF VDP REGISTERS (0 - 10)
+0106 =000002C2            sprites         equ     2000h   ; START ADDRESS OF SPRITE GENERATOR TABLE
+0106 =0000030D            spritevert      equ     3F00h   ; START ADDRESS OF SPRITE ATTRIBUTE TABLE,
+0106                      				; VERTICAL POSITION
+0106 =00000370            spritehori      equ     3F80h   ; START ADDRESS OF SPRITE ATTRIBUTE TABLE,
+0106                      				; HORIZONTAL POSITION
+0106 =000003D5            patterns        equ     0000h   ; START ADDRESS OF PATTERN GENERATOR TABLE
+0106                      
+0106                      ; START ADDRESS OF PATTERN NAME TABLE, | topleft    hl = 38CCh
+0106                      ; OR SCROLL SCREEN
+0106                      
+0106 =0000043F            screen		equ     3800h
+0106 =00000454            screen_gg	equ	38CCh	
+0106                      
+0106 =00000470            celllength      equ     32
+0106 =0000048B            numcolors       equ     64
+0106 =000004A8            screenlength    equ     1440
+0106                      
+0106                      ; -------------------------------------------------
+0106                      
+0106                      VDPWrite:
+0106                      ;****************************************************
+0106                      ; Inserts a quantity of a number in VRAM
+0106                      ;        e: holds the number to be written
+0106                      ;       bc: holds the quantity to be written
+0106                      ;       hl: holds the VRAM destination to start at
+0106                      ;****************************************************
+0106                      
+0106                      	; set up an initial address in VRAM to write to
+0106                      
+0106 7D                   	ld      a,l            ;1st 8 bits
+0107 D3 BF                	out     (Vcom),a
+0109 7C                   	ld      a,h            ; 2nd 8 bits
+010A F6 40                	or      Writemask      ; set write mode
+010C D3 BF                	out     (Vcom),a
+010E                      
+010E                      	; insert the number into VRAM a quantity of times
+010E                      
+010E                      VDPWriteLoop:
+010E 7B                   	ld      a,e            ; load data to 3rd byte
+010F D3 BE                	out     (Vdata),a      ; write to VRAM
+0111 0B                   	dec     bc             ; dec # of times to write by 1
+0112 78                   	ld	a,b
+0113 B1                   	or      c              ; or c with a
+0114 20 F8                	jr      nz,VDPWriteLoop; continue loop if or != 0
+0116                      
+0116 C9                   	ret
+0117                      
+0117                      
+0117                      		
+0117                      ;****************************************************
+0117                      ; clear the screen data area
+0117                      ;  not used in this program
+0117                      ;****************************************************
+0117                      
+0117                      clearscreen:
+0117 AF                   		xor	a
+0118 32 7F C3             		ld	(ram_vscroll),a
+011B 32 80 C3             		ld	(ram_hscroll),a
+011E                      		
+011E 21 7F C2             		ld	hl,ram_sprbuffer
+0121 06 40                		ld	b,64
+0123 AF                   		xor	a
+0124                      @clrspr:
+0124 77                   		ld	(hl),a
+0125 23                   		inc 	hl
+0126 77                   		ld	(hl),a
+0127 23                   		inc 	hl
+0128 77                   		ld	(hl),a
+0129 23                   		inc 	hl
+012A 10 F8                		djnz	@clrspr
+012C                      		
+012C 21 00 38             		ld      hl,screen  	; start at VRAM address 3800h
+012F 1E 00                		ld      e,0        	; number to place in VRAM
+0131 01 00 06             		ld      bc,768*2   	; number of times to write to VRAM
+0134 C3 06 01             		jp      VDPWrite
+0137                      		
+0137                      VDPinit:
+0137                      ;****************************************************
+0137                      ; initialize the VDP registers and VRAM
+0137                      ;****************************************************
+0137                      
+0137 21 00 00             	ld      hl,VDPregSet    ; address of register initialize table
+013A 06 0B                	ld      b,11            ; number of registers to initialize
+013C 0E 80                	ld      c,80h           ; register = 0
+013E                      
+013E                      	; read register settings from hl, outputting them to the VDP registers
+013E                      
+013E                      VDPinitLoop:
+013E 7E                   	ld      a,(hl)          ; initial  register configs
+013F D3 BF                	out     (Vcom),a        ; data out to 1st byte
+0141 23                   	inc     hl              ; next reg in table
+0142 79                   	ld      a,c             ; register number
+0143 D3 BF                	out     (Vcom),a        ; write data to register
+0145 0C                   	inc     c               ; next register
+0146 10 F6                	djnz    VDPinitLoop     ; dec b, jump if b != 0
+0148                      
+0148                      
+0148                      	; set up VDP to clear VRAM
+0148 AF                   	xor     a
+0149 D3 BF                	out     (Vcom),a        ; a is all zeros
+014B 3E 40                	ld      a,Writemask     ; 0100 0000
+014D D3 BF                	out     (Vcom),a        ; setting write mode
+014F 01 00 40             	ld      bc,4000h        ; how many times to write to VRAM
+0152                      BlankLoop:
+0152 AF                   	xor     a               ; a = 0
+0153 D3 BE                	out     (Vdata),a       ; data is zero
+0155 0B                   	dec     bc              ; dec bc by 1
+0156 78                   	ld      a,b
+0157 B1                   	or      c               ; or a with c
+0158 20 F8                	jr      nz,BlankLoop    ; continue blanking until bc = 0
+015A                      
+015A C9                   	ret
+015B                      	
+015B                      WriteVRAM:
+015B                      ;****************************************************
+015B                      ; Write to VRAM
+015B                      ;       hl: address of source bytes to load in VRAM
+015B                      ;       de: destination address in VRAM
+015B                      ;       bc: number of bytes to write
+015B                      ;****************************************************
+015B                      
+015B E5                   	push    hl
+015C D5                   	push    de              ; save values
+015D C5                   	push    bc
+015E                      
+015E                      	; let a.b = number of bytes to write
+015E 78                   	ld      a,b
+015F 41                   	ld      b,c
+0160                      
+0160 F5                   	push    af              ; save copy of high byte value for # of bytes
+0161                      				;  to write
+0161                      				;  to write to VRAM
+0161 7B                   	ld      a,e             ; dest address in vram to write to
+0162 D3 BF                	out     (Vcom),a
+0164 7A                   	ld      a,d             ; 2nd byte of dest address
+0165 F6 40                	or      Writemask       ; writemode
+0167 D3 BF                	out     (Vcom),a
+0169                      
+0169 0E BE                	ld      c,Vdata         ; data write address in vram, needed for OUTI
+016B                      
+016B 78                   	ld      a,b             ; low byte of # of times to write to vram
+016C A7                   	and     a
+016D 20 00                	jr      nz,WriteLoop    ; jump if a not zero
+016F                      
+016F F1                   	pop     af              ; high byte of # of times to write to vram
+0170 3D                   	dec     a               ; dec high byte
+0171                      
+0171                      OuterLoop:
+0171 F5                   	push    af              ; save value of high byte
+0172                      
+0172                      	; write values to VRAM until b, reaches zero
+0172                      Writeloop:
+0172 ED A3                	outi                    ; write (hl) to (c), dec b, inc hl
+0174                      
+0174 20 FC                	jr      nz,WriteLoop    ; jump if b != 0
+0176                      
+0176 F1                   	pop     af              ; high byte of # of times to write to vram
+0177                      
+0177                      	; go to writeloop until a reaches zero
+0177 3D                   	dec     a
+0178 F2 71 01             	jp      p,OuterLoop     ; jump until a = 0
+017B                      
+017B C1                   	pop     bc
+017C D1                   	pop     de              ; restore values
+017D E1                   	pop     hl
+017E C9                   	ret
+017F                      
+017F                      
+017F                      WriteSprite:
+017F                      ;****************************************************
+017F                      ; change the attribute table values for a sprite
+017F                      ;       b: the sprite number (0-63)
+017F                      ;       c: the character number in sprite table
+017F                      ;       d: the sprite's x location on screen
+017F                      ;       e: the sprite's y location on screen
+017F                      ;****************************************************
+017F                      
+017F 21 00 3F             	ld      hl,spritevert      ; start of sprite attrib. table, vert pos.
+0182 7D                   	ld      a,l                ; low part of sprite vert. address
+0183 80                   	add     a,b                ; index into table
+0184 D3 BF                	out     (Vcom),a           ; 1st byte of Write address
+0186 7C                   	ld      a,h                ; high part of sprite vert. address
+0187 F6 40                	or      Writemask          ; set write mode
+0189 D3 BF                	out     (Vcom),a           ; 2nd byte of Write address
+018B                      
+018B 7B                   	ld      a,e                ; new sprite y, vertical, position
+018C D3 BE                	out     (Vdata),a          ; write new vertical position
+018E F5                   	push    af
+018F F1                   	pop     af                 ; delay for vram write
+0190                      
+0190 21 80 3F             	ld      hl,spritehori      ; start of sprite attrib. table, horiz pos
+0193 7D                   	ld      a,l                ; low part of sprite horiz address
+0194 80                   	add     a,b                ; skip over horizontal data
+0195 80                   	add     a,b                ; skip over character data
+0196 D3 BF                	out     (Vcom),a           ; 1st byte of Write address
+0198 7C                   	ld      a,h                ; high part of sprite horiz address
+0199 F6 40                	or      Writemask          ; writemode
+019B D3 BF                	out     (Vcom),a           ; 2nd byte of Write address
+019D                      
+019D 7A                   	ld      a,d                ; new sprite x, horiz, position
+019E D3 BE                	out     (Vdata),a          ; write new horizontal position
+01A0 F5                   	push    af
+01A1 F1                   	pop     af                 ; delay for Vram write
+01A2 79                   	ld      a,c                ; character number
+01A3 D3 BE                	out     (Vdata),a          ; write new char. number
+01A5 F5                   	push    af
+01A6 F1                   	pop     af                 ; delay for Vram write
+01A7                      
+01A7 C9                   	ret
+01A8                      
+01A8                      
+01A8                      screenoff:
+01A8                      ;****************************************************
+01A8                      ; De-activates the screen from being drawn
+01A8                      ;****************************************************
+01A8                      
+01A8                      	;set BLANK bit of VDP register 1 to zero
+01A8                      
+01A8 3E A0                	ld      a,0A0h          ; 1010 0000
+01AA D3 BF                	out     (Vcom),a
+01AC 3E 81                	ld      a,Vreg+1        ; register 1
+01AE D3 BF                	out     (Vcom),a        ; set blank bit to zero
+01B0                      
+01B0 C9                   	ret
+01B1                      
+01B1                      
+01B1                      screenon:
+01B1                      ;****************************************************
+01B1                      ;Re-activates the screen
+01B1                      ;****************************************************
+01B1                      
+01B1 3E E0                	ld      a,0E0h          ; 1110 0000
+01B3 D3 BF                	out     (Vcom),a
+01B5 3E 81                	ld      a,Vreg+1        ; register 1
+01B7 D3 BF                	out     (Vcom),a        ; set blank bit to 1, screen on
+01B9                      
+01B9 C9                   	ret
+01BA                      	
+01BA                      ; -------------------------------------------------
+01BA                      ; VDP_LoadMaps
+01BA                      ; 
+01BA                      ; normal:
+01BA                      ; bc - X size, Y size
+01BA                      ; ix - mappings
+01BA                      ; hl - vdp address
+01BA                      ; 
+01BA                      ; uses stack
+01BA                      ; -------------------------------------------------
+01BA                      
+01BA                      VDP_LoadMaps:
+01BA 62                   		ld	h,d
+01BB 6B                   		ld	l,e
+01BC C5                   		push	bc
+01BD                      @X_draw:
+01BD 7D                   		ld	a,l		; VDP: address
+01BE D3 BF                		out	(Vcom),a
+01C0 7C                   		ld	a,h
+01C1 F6 40                		or	Writemask
+01C3 D3 BF                		out	(Vcom),a
+01C5                      		
+01C5 DD 7E 00             		ld	a,(ix)
+01C8 D3 BE                		out	(Vdata),a	; VDP: read
+01CA DD 23                		inc 	ix
+01CC DD 7E 00             		ld	a,(ix)
+01CF D3 BE                		out	(Vdata),a
+01D1 DD 23                		inc 	ix
+01D3                      		
+01D3 23                   		inc	hl
+01D4 23                   		inc	hl
+01D5 10 E6                		djnz	@X_draw
+01D7                      
+01D7 62                   		ld	h,d		;Next line
+01D8 6B                   		ld	l,e
+01D9 01 40 00             		ld	bc,40h		
+01DC 09                   		add 	hl,bc
+01DD 54                   		ld	d,h
+01DE 5D                   		ld	e,l
+01DF                      		
+01DF C1                   		pop	bc
+01E0 0D                   		dec	c
+01E1 79                   		ld	a,c
+01E2 C2 BA 01              		jp	nz,VDP_LoadMaps
+01E5 C9                   		ret
+01E6                      		
+01E6                      ; -------------------------------------------------
+01E6                      ; VDP_ClearLayer
+01E6                      ;
+01E6                      ; uses:
+01E6                      ; bc,hl
+01E6                      ; -------------------------------------------------
+01E6                      
+01E6                      VDP_ClearLayer:
+01E6 21 00 38             		ld	hl,screen
+01E9                      	
+01E9 0E 1C                		ld	c,1Ch
+01EB                      @y_loop:
+01EB 06 20                		ld	b,20h
+01ED                      @x_loop:		
+01ED 7D                    		ld	a,l
+01EE D3 BF                 		out	(Vcom),a
+01F0 7C                    		ld	a,h
+01F1 F6 40                 		or	Writemask
+01F3 D3 BF                 		out	(Vcom),a
+01F5                       		
+01F5 AF                    		xor	a
+01F6 D3 BE                 		out	(Vdata),a
+01F8 D3 BE                 		out	(Vdata),a
+01FA                       		
+01FA 23                    		inc	hl
+01FB 23                    		inc	hl
+01FC 10 EF                		djnz	@x_loop
+01FE                      		
+01FE 0D                   		dec	c
+01FF C2 EB 01             		jp	nz,@y_loop
+0202 C9                   		ret
+0203                      		
+0203                      ; -------------------------------------------------
+0203                      ; VDP_LoadPal
+0203                      ; 
+0203                      ; normal:
+0203                      ; b - Num of colors
+0203                      ; c - Start from
+0203                      ; 
+0203                      ; uses:
+0203                      ; bc,d,hl
+0203                      ; 
+0203                      ; uses stack
+0203                      ; -------------------------------------------------
+0203                      
+0203                      VDP_LoadPal:
+0203 79                   		ld	a,c
+0204 DD 21 FF C1          		ld	ix,ram_palbuffer
+0208                      ; 		out     (Vcom),a        ; color ram address
+0208                      ; 		ld      a,Vcolor        ; sets required C0h for a color write
+0208                      ; 		out     (Vcom),a
+0208                      
+0208                      @color_loop:
+0208                      		
+0208 1E 00                		ld	e,0		; GG to SMS colors
+020A 7E                   		ld	a,(hl)		; read GGs GREEN+RED
+020B CB 2F                		sra	a
+020D CB 2F                		sra	a
+020F E6 03                		and 	00000011b
+0211 5F                   		ld	e,a
+0212 7E                   		ld	a,(hl)
+0213 CB 2F                		sra	a
+0215 CB 2F                		sra	a
+0217 CB 2F                		sra	a
+0219 CB 2F                		sra	a
+021B E6 0C                		and	00001100b
+021D B3                   		or	e
+021E 5F                   		ld	e,a
+021F 23                   		inc 	hl
+0220 7E                    		ld	a,(hl)		; read GGs BLUE
+0221 CB 27                 		sla	a
+0223 CB 27                 		sla	a
+0225 E6 30                 		and	00110000b
+0227 57                    		ld	d,a
+0228 7B                    		ld	a,e
+0229 B2                    		or	d
+022A E6 3F                 		and	00111111b
+022C                      		
+022C DD 77 00             		ld	(ix),a
+022F DD 23                		inc	ix
+0231 23                   		inc 	hl
+0232                      		
+0232                      ; 		push    af
+0232                      ; 		pop     af		; delay for writing to ram
+0232 10 D4                		djnz	@color_loop
+0234 C9                   		ret
+0235                      		
+0235                      ; -------------------------------------------------
+0235                      ; Data
+0235                      ; -------------------------------------------------
+0235                      
+0235                      VDPregSet:
+0235 26                   		db      00100110b       ;reg 0 (???H???? HBLANK)
+0236 E0                   		db      11100000b       ;1
+0237 FF                   		db      11111111b       ;2
+0238 FF                   		db      11111111b       ;3
+0239 FF                   		db      11111111b       ;4
+023A FF                   		db      11111111b       ;5
+023B 00                   		db      00000000b       ;bit 2: Sprite characters $0x00 ($00xx,$01xx)
+023C 00                   		db      00000000b       ;7
+023D 00                   		db      00000000b       ;8
+023E 00                   		db      00000000b       ;9
+023F 00                   		db      00000000b       ;10
+0240                      		
+0240                      		
+0240                      		include "subs/misc.asm"
+0240                      ;****************************************************
+0240                      ; initialize the system
+0240                      ;****************************************************
+0240                      
+0240                      initsys:
+0240                      
+0240 AF                   		xor     a         	; set a to zero
+0241 32 FC FF             		ld      (0FFFCh),a	; set bank control register to all zeros
+0244 32 FD FF             		ld      (0FFFDh),a	; set bank reg #0 to all zeros
+0247 3C                   		inc	a
+0248 32 FE FF             		ld      (0FFFEh),a	; set bank reg #1 to 0001
+024B 3C                   		inc	a
+024C 32 FF FF             		ld      (0FFFFh),a	; set bank reg #2 to 0010
+024F                      		
+024F 21 00 C0             		ld      hl,0C000h  	; zero system RAM
+0252 11 01 C0             		ld      de,0C001h  	; C000h to DFF0h
+0255 01 F0 1F             		ld      bc,01FF0h  	; number of times to write
+0258 36 00                		ld      (hl),0
+025A ED B0                		ldir               	; load (de) with (hl). inc de, inc hl, dec bc
+025C                      					; continue until bc = 0
+025C                      					
+025C C9                   		ret
+025D                      
+025D                      ; --------------------------------------------
+025D                      ; HexToBCD
+025D                      ; --------------------------------------------
+025D                      
+025D                      HexToBCD:
+025D 4F                   		ld	c,a		; Original (hex) number
+025E 06 08                		ld	b,8		; How many bits
+0260 AF                   		xor	a		; Output (BCD) number, starts at 0
+0261 CB 21                @rept:		sla	c		; shift c into carry
+0263 8F                   		adc	a,a
+0264 27                   		daa			; Decimal adjust a, so shift = BCD x2 plus carry
+0265 10 FA                		djnz	@rept		; Repeat for 8 bits
+0267 C9                   		ret
+0268                      		
+0268                      ; --------------------------------------------
+0268                      ; VSync
+0268                      ; --------------------------------------------
+0268                      
+0268                      vsync:
+0268 76                   		halt
+0269 C9                   		ret
+026A                              
+026A                              
+026A                      		include "subs/fade.asm"
+026A                      ; ====================================================================
+026A                      ; ---------------------------------------
+026A                      ; Equs
+026A                      ; ---------------------------------------
+026A                      
+026A =000000B7            ID_FadeOut		equ	01h
+026A =000000CA            ID_FadeIn		equ	02h
+026A =000000DE            ID_ToWhite		equ	03h
+026A =000000F4            ID_FadeWhite		equ	04h
+026A                      
+026A                      ; ---------------------------------------
+026A                      
+026A =00000134            PalFadeFlags		equ	1
+026A =00000148            PalFadeStart		equ	2
+026A =0000015A            PalFadeEnd		equ	3
+026A =0000016C            PalFadeTmr		equ	4
+026A =00000181            PalFadeSource		equ	8
+026A                      
+026A                      ; -------------------------------------------------
+026A                      ; FadeIn/FadeOut
+026A                      ; -------------------------------------------------
+026A                      
+026A                      PalFade:
+026A DD 21 83 C3          		ld	ix,ram_runfadecol
+026E DD 7E 00             		ld	a,(ix)
+0271 CB 7F                		bit	7,a
+0273 CA 00 00             		jp	z,@run_tasks
+0276 DD 7E 05               		ld	a,(ix+(PalFadeTmr+1))
+0279 3D                     		dec	a
+027A DD 77 05               		ld	(ix+(PalFadeTmr+1)),a
+027D F2 00 00              		jp	p,@Return
+0280 DD 7E 04             		ld	a,(ix+PalFadeTmr)
+0283 DD 77 05             		ld	(ix+(PalFadeTmr+1)),a
+0286 AF                   		xor	a
+0287 DD 77 00             		ld	(ix),a
+028A                      @Return:
+028A C9                   		ret
+028B                      		
+028B                      @run_tasks:
+028B CB 27                 		sla	a
+028D 01 00 00              		ld	bc,0
+0290 4F                    		ld	c,a
+0291 21 00 00             		ld	hl,@task_list
+0294 09                    		add 	hl,bc
+0295 E9                   		jp	(hl)
+0296                      
+0296                      ; -------------------------------------------------
+0296                      
+0296                      @task_list:
+0296 18 F2                		jr	@Return
+0298 18 00                		jr	Pal_FadeOut
+029A 18 00                		jr	Pal_FadeIn
+029C 18 EC                		jr	@Return
+029E 18 EA                		jr	@Return
+02A0                      	
+02A0                      ; -------------------------------------------------
+02A0                      ; FADEIN
+02A0                      ; -------------------------------------------------
+02A0                      
+02A0                      Pal_FadeIn:	
+02A0 DD 7E 05             		ld	a,(ix+(PalFadeTmr+1))
+02A3 3D                   		dec	a
+02A4 DD 77 05             		ld	(ix+(PalFadeTmr+1)),a
+02A7 F2 00 00             		jp	p,@wait
+02AA DD 7E 04             		ld	a,(ix+(PalFadeTmr))
+02AD DD 77 05             		ld	(ix+(PalFadeTmr+1)),a
+02B0                      		
+02B0 FD 21 3F C2           		ld	iy,ram_palfadebuff
+02B4 21 FF C1             		ld	hl,ram_palbuffer
+02B7                      		
+02B7 11 00 00             		ld	de,0
+02BA 01 00 00             		ld	bc,0
+02BD DD 46 03             		ld	b,(ix+(PalFadeEnd))
+02C0 58                   		ld	e,b
+02C1 04                   		inc 	b
+02C2                      
+02C2                      ; --------------------
+02C2                      ; MERCURY
+02C2                      ; --------------------
+02C2                      
+02C2                      @next_entry:
+02C2 FD 7E 00             		ld	a,(iy)
+02C5 E6 03                		and	00000011b
+02C7 4F                   		ld	c,a
+02C8 7E                   		ld	a,(hl)		;RED
+02C9 E6 03                		and	00000011b
+02CB B9                   		cp	c
+02CC 7E                   		ld	a,(hl)
+02CD D2 00 00             		jp	nc,@cont_red
+02D0 3C                   		inc	a
+02D1 CB C2                		set 	0,d
+02D3                      @cont_red:
+02D3 77                     		ld	(hl),a
+02D4                        		
+02D4 FD 7E 00             		ld	a,(iy)
+02D7 E6 0C                		and	00001100b
+02D9 4F                   		ld	c,a
+02DA 7E                   		ld	a,(hl)		;GREEN
+02DB E6 0C                		and	00001100b
+02DD B9                   		cp	c
+02DE 7E                   		ld	a,(hl)
+02DF D2 00 00             		jp	nc,@cont_green
+02E2 C6 04                		add 	a,4
+02E4 CB CA                		set 	1,d
+02E6                      @cont_green:
+02E6 77                     		ld	(hl),a
+02E7                        		
+02E7 FD 7E 00             		ld	a,(iy)
+02EA E6 30                		and	00110000b
+02EC 4F                   		ld	c,a
+02ED 7E                   		ld	a,(hl)		;BLUE
+02EE E6 30                		and	00110000b
+02F0 B9                   		cp	c
+02F1 7E                   		ld	a,(hl)
+02F2 D2 00 00             		jp	nc,@cont_blue
+02F5 C6 10                		add 	a,10h
+02F7 CB D2                		set 	2,d
+02F9                      @cont_blue:
+02F9 77                     		ld	(hl),a
+02FA                        		
+02FA 7A                     		ld	a,d
+02FB FE 07                  		cp	00000111b
+02FD D2 00 00               		jp	nc,@redgreend
+0300 1D                    		dec	e
+0301                      @redgreend:
+0301 23                   		inc	hl
+0302 FD 23                		inc	iy
+0304 10 BC                 		djnz	@next_entry
+0306                       		
+0306                      ; --------------------
+0306                      
+0306                       		
+0306 7B                   		ld	a,e
+0307 F2 00 00             		jp	p,@wait
+030A                      		
+030A DD 7E 00             		ld 	a,(ix)
+030D CB FF                		set 	7,a
+030F DD 77 00             		ld	(ix),a
+0312                      @wait:
+0312 C9                   		ret
+0313                      
+0313                      ; -------------------------------------------------
+0313                      ; FADEOUT
+0313                      ; -------------------------------------------------
+0313                      
+0313                      Pal_FadeOut:	
+0313 DD 7E 05              		ld	a,(ix+(PalFadeTmr+1))
+0316 3D                    		dec	a
+0317 DD 77 05              		ld	(ix+(PalFadeTmr+1)),a
+031A F2 00 00              		jp	p,@wait
+031D DD 7E 04              		ld	a,(ix+(PalFadeTmr))
+0320 DD 77 05              		ld	(ix+(PalFadeTmr+1)),a
+0323                       		
+0323 FD 21 3F C2            		ld	iy,ram_palfadebuff
+0327 21 FF C1              		ld	hl,ram_palbuffer
+032A                       		
+032A 11 00 00              		ld	de,0
+032D 01 00 00              		ld	bc,0
+0330 DD 46 03              		ld	b,(ix+(PalFadeEnd))
+0333 58                    		ld	e,b
+0334 04                    		inc 	b
+0335                       		
+0335                      ; --------------------
+0335                      ; MERCURY
+0335                      ; --------------------
+0335                      
+0335                      @next_entry:
+0335 7E                       		ld	a,(hl)
+0336 57                       		ld	d,a
+0337 E6 03                    		and 	00000011b
+0339 FE 00                   		cp	0
+033B CA 00 00                		jp	z,@red_done
+033E 3D                       		dec	a
+033F E6 03                    		and 	00000011b
+0341 57                       		ld	d,a
+0342                      @red_done:
+0342 7E                   		ld	a,(hl)
+0343 E6 3C                		and	00111100b
+0345 B2                   		or	d
+0346 77                    		ld	(hl),a
+0347                       		
+0347 7E                        		ld	a,(hl)
+0348 57                        		ld	d,a
+0349 E6 0C                     		and	00001100b
+034B FE 00                     		cp	0
+034D CA 00 00                  		jp	z,@green_done
+0350 D6 04                      		sub	a,4
+0352 57                        		ld	d,a
+0353 7E                         		ld	a,(hl)
+0354 E6 33                      		and	00110011b
+0356 4F                         		ld	c,a
+0357 7A                         		ld	a,d
+0358 B1                         		or	c
+0359                      @green_done:
+0359 7E                   		ld	a,(hl)
+035A E6 33                		and	00110011b
+035C B2                   		or	d
+035D 77                    		ld	(hl),a
+035E                       	
+035E 7E                        		ld	a,(hl)
+035F 57                        		ld	d,a
+0360 E6 30                     		and	00110000b
+0362 FE 00                     		cp	0
+0364 CA 00 00                  		jp	z,@blue_done
+0367 D6 10                      		sub	a,10h
+0369 57                        		ld	d,a
+036A 7E                         		ld	a,(hl)
+036B E6 0F                      		and	00001111b
+036D 4F                         		ld	c,a
+036E 7A                         		ld	a,d
+036F B1                         		or	c
+0370                      @blue_done:
+0370 7E                   		ld	a,(hl)
+0371 E6 0F                      		and	00001111b
+0373 B2                   		or	d
+0374 77                    		ld	(hl),a
+0375                       		
+0375 7E                    		ld	a,(hl)
+0376 FE 00                 		cp	0
+0378 C2 00 00              		jp	nz,@not_zero
+037B 1D                      		dec	e
+037C                      @not_zero:
+037C 23                   		inc	hl
+037D 10 B6                 		djnz	@next_entry
+037F                       		
+037F                      ; --------------------
+037F                      
+037F                       		
+037F 7B                    		ld	a,e
+0380 F2 00 00              		jp	p,@wait
+0383                      		
+0383 DD 7E 00             		ld 	a,(ix)
+0386 CB FF                		set 	7,a
+0388 DD 77 00               		ld	(ix),a
+038B                      @wait:
+038B C9                   		ret
+038C                      		
+038C                      ; -------------------------------------------------
+038C                      ; PalFade_Set
+038C                      ;
+038C                      ; b -  Command
+038C                      ; de - NumOfColors|Speed
+038C                      ; -------------------------------------------------
+038C                      
+038C                      PalFade_Set:
+038C DD 21 83 C3          		ld	ix,ram_runfadecol
+0390 48                   		ld	c,b
+0391                      		
+0391 41                   		ld	b,c
+0392 7A                   		ld	a,d
+0393 DD 77 03             		ld	(ix+(PalFadeEnd)),a
+0396 7B                   		ld	a,e
+0397 3C                   		inc	a	;slow down on MS
+0398 3C                   		inc	a
+0399 DD 77 04             		ld	(ix+(PalFadeTmr)),a
+039C 78                   		ld	a,b
+039D DD 70 00             		ld	(ix),b
+03A0                      		
+03A0 48                   		ld	c,b
+03A1 C9                   		ret
+03A2                      		
+03A2                      ; -------------------------------------------------
+03A2                      ; PalFade_Load
+03A2                      ; 
+03A2                      ; normal:
+03A2                      ; b - Num of colors
+03A2                      ; c - Start from
+03A2                      ; 
+03A2                      ; uses:
+03A2                      ; bc,d,hl
+03A2                      ; 
+03A2                      ; uses stack
+03A2                      ; -------------------------------------------------
+03A2                      
+03A2                      PalFade_Load:
+03A2 79                   		ld	a,c
+03A3 DD 21 3F C2          		ld	ix,ram_palfadebuff
+03A7                      ; 		out     (Vcom),a        ; color ram address
+03A7                      ; 		ld      a,Vcolor        ; sets required C0h for a color write
+03A7                      ; 		out     (Vcom),a
+03A7                      
+03A7                      @color_loop:
+03A7                      		
+03A7 1E 00                		ld	e,0		; GG to SMS colors
+03A9 7E                   		ld	a,(hl)		; read GGs GREEN+RED
+03AA CB 2F                		sra	a
+03AC CB 2F                		sra	a
+03AE E6 03                		and 	00000011b
+03B0 5F                   		ld	e,a
+03B1 7E                   		ld	a,(hl)
+03B2 CB 2F                		sra	a
+03B4 CB 2F                		sra	a
+03B6 CB 2F                		sra	a
+03B8 CB 2F                		sra	a
+03BA E6 0C                		and	00001100b
+03BC B3                   		or	e
+03BD 5F                   		ld	e,a
+03BE 23                   		inc 	hl
+03BF 7E                    		ld	a,(hl)		; read GGs BLUE
+03C0 CB 27                 		sla	a
+03C2 CB 27                 		sla	a
+03C4 E6 30                 		and	00110000b
+03C6 57                    		ld	d,a
+03C7 7B                    		ld	a,e
+03C8 B2                    		or	d
+03C9 E6 3F                 		and	00111111b
+03CB                      		
+03CB DD 77 00             		ld	(ix),a
+03CE DD 23                		inc	ix
+03D0 23                   		inc 	hl
+03D1                      		
+03D1 10 D4                		djnz	@color_loop
+03D3 C9                   		ret
+03D4                      		
+03D4                      ; -------------------------------------------------
+03D4                      
+03D4                      PalFade_Wait:
+03D4 CD 68 02                		call	VSync
+03D7                         		
+03D7 3A 83 C3                  		ld	a,(ram_runfadecol)
+03DA FE 00                     		cp	0
+03DC C2 D4 03                  		jp	nz,PalFade_Wait
+03DF C9                   		ret
+03E0                      		
+03E0                      		
+03E0                      		include "subs/pads.asm"
+03E0                      ; ====================================================================
+03E0                      ; -------------------------------------------------
+03E0                      ; Joypads/GG controller
+03E0                      ; -------------------------------------------------
+03E0                      
+03E0                      ; -------------------------------------------------
+03E0                      ; Variables
+03E0                      ; -------------------------------------------------
+03E0                      
+03E0 =00000184            pad             equ     0DCh    ; I/O PORT FOR JOYPAD AND FIRE BUTTONS
+03E0 =000001A8            padright        equ     08h     ; \
+03E0 =000001F3            padleft         equ     04h     ;  \___ bit values in joypad port register
+03E0 =00000218            padup           equ     01h     ;  /
+03E0 =0000023C            paddown         equ     02h     ; /
+03E0                      
+03E0 =0000025A            bitJoyStart	equ	7	;MUST BE 7
+03E0 =00000269            bitJoy1		equ	4
+03E0 =00000278            bitJoy2		equ	5
+03E0 =0000028A            bitJoyRight	equ	3
+03E0 =0000029B            bitJoyLeft	equ	2
+03E0 =000002AC            bitJoyDown	equ	1
+03E0 =000002BB            bitJoyUp	equ	0
+03E0                      
+03E0 =000002CB            on_hold		equ	0
+03E0 =000002DA            on_press	equ	1
+03E0                      
+03E0                      ; -------------------------------------------------
+03E0                      ; Read
+03E0                      ; -------------------------------------------------
+03E0                      
+03E0                      pads_read:
+03E0 DD 21 9B C3          		ld	ix,ram_joypads
+03E4 DB DC                		in      a,(pad)
+03E6 EE FF                		xor     0FFh
+03E8 47                   		ld	b,a
+03E9 DD 7E 00              		ld	a,(ix+on_hold)
+03EC A8                    		xor	b
+03ED DD 70 00             		ld	(ix+on_hold),b
+03F0 A0                   		and	b	
+03F1 DD 77 01             		ld	(ix+on_press),a
+03F4 C9                   		ret
+03F5                      		
+03F5                      		
+03F5                      		
+03F5                      ; ====================================================================
+03F5                      ; -------------------------------------------------
+03F5                      ; Init
+03F5                      ; -------------------------------------------------
+03F5                      
+03F5                      Init:
+03F5 F3                   		di				; disable interrupts
+03F6 CD A8 01             		call    screenoff		; don't show screen
+03F9 CD 40 02             		call    initsys			; init I/O ports and bank registers
+03FC CD 37 01             		call    VDPinit			; init VDP and VRAM
+03FF CD 00 00             		call	SMEG_Init
+0402 FB                   		ei
+0403                      @MainLoop:
+0403 3A A3 C3             		ld	a,(ram_gamemode)
+0406 CB 27                		sla	a
+0408 CB 27                		sla	a
+040A CB 27                		sla	a
+040C 01 00 00             		ld	bc,0
+040F 4F                   		ld	c,a
+0410 21 00 00             		ld	hl,@modes_list
+0413 09                    		add 	hl,bc
+0414 E9                   		jp	(hl)
+0415                      	
+0415                      ; -------------------------------------------------
+0415                      
+0415                      @modes_list:
+0415 CD 00 00             		call	segalogo
+0418 C3 03 04             		jp	@MainLoop
+041B 00                   		nop
+041C 00                   		nop
+041D CD 00 00             		call	Level
+0420 C3 03 04             		jp	@MainLoop
+0423 00                   		nop
+0424 00                   		nop
+0425                      		
+0425                      ; ====================================================================
+0425                      ; -------------------------------------------------
+0425                      ; Modes
+0425                      ; -------------------------------------------------
+0425                      
+0425                      		include "modes/title/code.asm"
+0425                      ; ====================================================================
+0425                      ; -------------------------------------------------
+0425                      ; Title Screen
+0425                      ; -------------------------------------------------
+0425                      
+0425                      segalogo:
+0425 06 01                  		ld	b,ID_FadeOut
+0427 11 00 1F               		ld	de,1F00h
+042A CD 8C 03               		call	PalFade_Set
+042D CD D4 03                 		call	PalFade_Wait
+0430                          		
+0430 F3                   		di
+0431 CD 17 01             		call	clearscreen
+0434 3E 00 32 FE FF       		bankdata BANK_Title
+0439                      		
+0439 21 00 00             		ld	hl,art_title			;  hl = 0208   where is data at
+043C 11 00 00             		ld	de,0				;  de = 0      where in VRAM to put data
+043F 01 00 00             		ld	bc,art_title_end		;  bc = 0380   how many times to write to vram
+0442 CD 5B 01             		call	WriteVRAM
+0445                      
+0445 DD 21 00 00          		ld	ix,map_title
+0449 01 12 14             		ld	bc,1412h
+044C 11 00 38              		ld	de,screen
+044F CD BA 01              		call	VDP_LoadMaps
+0452 21 00 00             		ld	hl,pal_title
+0455 06 10                		ld	b,16
+0457 0E 00                		ld	c,0
+0459 CD A2 03              		call	PalFade_Load
+045C                       		
+045C                      ;       	ld	hl,SmegSong_Test
+045C                      ;       	ld	b,1
+045C                      ;        	call	Smeg_LoadSong
+045C                      
+045C FB                   		ei
+045D 06 02                 		ld	b,ID_FadeIn
+045F 11 00 1F              		ld	de,1F00h
+0462 CD 8C 03              		call	PalFade_Set
+0465 CD D4 03              		call	PalFade_Wait
+0468                      		
+0468                      ;  		di
+0468                      ;     		bankdata BANK_WAVE
+0468                      ;            	call	PlayPCM
+0468                      ;             	ei
+0468                               	
+0468                      ; -------------------------------------------------
+0468                      ; Loop
+0468                      ; -------------------------------------------------
+0468                      
+0468                      @loop:
+0468 CD 68 02             		call	VSync
+046B                      		
+046B 3A 9B C3             		ld	a,(ram_joypads+on_hold)
+046E CB 67                		bit 	bitJoy1,a
+0470 20 00                		jr      nz,@end_this
+0472 C3 68 04             		jp	@loop
+0475                      
+0475                      ; -------------------------------------------------
+0475                      
+0475                      @end_this:
+0475 3E 01                		ld	a,1
+0477 32 A3 C3             		ld	(ram_gamemode),a
+047A C9                   		ret
+047B                      		
+047B                      		
+047B                      		include "modes/level/code.asm"		
+047B                      ; ====================================================================
+047B                      ; -------------------------------------------------
+047B                      ; Level
+047B                      ; -------------------------------------------------
+047B                      
+047B                      ; -------------------------------------------------
+047B                      ; Include
+047B                      ; -------------------------------------------------
+047B                      
+047B                      ; -------------------------------------------------
+047B                      ; Vars
+047B                      ; -------------------------------------------------
+047B                      
+047B                      ;ram_ponflags
+047B =000001BB            pon_width		equ 	6
+047B =000001CE            pon_height		equ 	9
+047B                      
+047B =000001E3            bitFullField		equ	0
+047B =000001F4            bitDecCur		equ	7
+047B                      
+047B                      ; -------------------------------------------------
+047B                      ; RAM
+047B                      ; -------------------------------------------------
+047B                      
+047B                      			rsset ram_modebuffer
+047B =000002A1            ram_scrltmr		rb 1					; scroll timer
+047B =000002C6            ram_scrlspd		rb 1					; scroll speed
+047B =000002F8            ram_scrlflag		rb 1					; scroll flag+timer (1x)		
+047B =0000032B            ram_scrlpos		rb 1					; scroll position (00h-00Eh)
+047B =0000034C            ram_ponrand		rb 1					; random 1
+047B =0000036D            ram_ponrnd2		rb 1					; random 2
+047B =0000038F            ram_ponflags		rb 1					; see Vars
+047B =000003AC            ram_poncurpos		rb 1					; XY
+047B =000003DC            ram_pontimeout		rb 1					; scroll timeout timer
+047B =00000443            ram_ponfield		rb (pon_width*pon_height)+(pon_width*2) ; 6*9 playfield, >10 are for reloading new lines
+047B                      
+047B                      ;EXTERNAL: ram_vintframes (frame counter from VBlank)
+047B                      
+047B                      ; -------------------------------------------------
+047B                      ; Init
+047B                      ; -------------------------------------------------
+047B                      
+047B                      Level:
+047B 06 01                  		ld	b,ID_FadeOut
+047D 11 00 1F               		ld	de,1F00h
+0480 CD 8C 03               		call	PalFade_Set
+0483 CD D4 03                 		call	PalFade_Wait
+0486                          		
+0486 F3                   		di
+0487 CD 17 01             		call	clearscreen
+048A 3E 00 32 FE FF       		bankdata BANK_level
+048F                      		
+048F 21 00 00             		ld	hl,art_ingame			;  hl = 0208   where is data at
+0492 11 00 00             		ld	de,0				;  de = 0      where in VRAM to put data
+0495 01 00 00             		ld	bc,art_ingame_end		;  bc = 0380   how many times to write to vram
+0498 CD 5B 01             		call	WriteVRAM
+049B                      
+049B                      ; 		ld	ix,map_ingame
+049B                      ; 		ld	bc,201Ch
+049B                      ;  		ld	de,screen
+049B                      ;  		call	VDP_LoadMaps
+049B 21 00 00             		ld	hl,pal_ingame
+049E 06 20                		ld	b,32
+04A0 0E 00                		ld	c,0
+04A2 CD A2 03              		call	PalFade_Load
+04A5                       		
+04A5 CD 00 00              		call	Pon_Init
+04A8                       		
+04A8 FB                   		ei
+04A9 06 02                 		ld	b,ID_FadeIn
+04AB 11 00 1F              		ld	de,1F00h
+04AE CD 8C 03              		call	PalFade_Set
+04B1 CD D4 03              		call	PalFade_Wait
+04B4                               	
+04B4 3E 07                         	ld	a,7			;temproal thing
+04B6 32 01 C0                      	ld	(ram_scrlspd),a
+04B9                               	
+04B9                      ; -------------------------------------------------
+04B9                      ; Loop
+04B9                      ; -------------------------------------------------
+04B9                      
+04B9                      @loop:
+04B9 CD 68 02             		call	VSync
+04BC                      		
+04BC CD 00 00             		call	Pon_Controls
+04BF CD 00 00             		call	Pon_Run
+04C2                      		
+04C2 3A 9C C3             		ld	a,(ram_joypads+on_press)
+04C5 CB 7F                		bit 	bitJoyStart,a
+04C7 CA B9 04             		jp	z,@Loop
+04CA                      		
+04CA AF                   		xor	a
+04CB 32 A3 C3             		ld	(ram_gamemode),a
+04CE C9                   		ret
+04CF                      
+04CF                      ; -------------------------------------------------
+04CF                      
+04CF                      ; @end_this:
+04CF                      ; 		ld	a,1
+04CF                      ; 		ld	(ram_gamemode),a
+04CF                      ; 		ret
+04CF                      	
+04CF                      ; ====================================================================
+04CF                      ; -------------------------------------------------
+04CF                      ; Pon Engine
+04CF                      ; -------------------------------------------------
+04CF                      
+04CF                      ; -------------------------
+04CF                      ; Init
+04CF                      ; -------------------------
+04CF                      
+04CF                      Pon_Init:
+04CF 3E CB                 		ld	a,11001011b			; random values
+04D1 32 04 C0              		ld	(ram_ponrand),a
+04D4 3E 64                		ld	a,64h
+04D6 32 05 C0             		ld	(ram_ponrnd2),a
+04D9 AF                   		xor 	a
+04DA 32 03 C0             		ld	(ram_scrlpos),a			; clear position
+04DD 32 02 C0             		ld	(ram_scrlflag),a		; clear scroll flags
+04E0 32 08 C0             		ld	(ram_pontimeout),a		; clear timeout
+04E3 32 06 C0             		ld	(ram_ponflags),a		; clear pon flags
+04E6                      		
+04E6 3E 40                		ld	a,40h				; default cursor position
+04E8 32 07 C0             		ld	(ram_poncurpos),a
+04EB CD 00 00              		call	Pon_InitBg			; draw hud to layer
+04EE CD 00 00             		call 	Pon_MakeHudSpr			; draw hud sprites
+04F1 CD 00 00             		call	Pon_Cursor			; draw cursor
+04F4 CD 00 00             		call	Pon_InitField			; init field
+04F7 C3 00 00             		jp	Pon_Refresh			; refresh
+04FA                      
+04FA                      ; ====================================================================
+04FA                      ; -------------------------
+04FA                      ; Run
+04FA                      ; -------------------------
+04FA                      
+04FA                      Pon_Run:
+04FA 3A 06 C0             		ld	a,(ram_ponflags)
+04FD CB 47                		bit 	bitFullField,a
+04FF C2 00 00             		jp	nz,@end
+0502 3A 08 C0             		ld	a,(ram_pontimeout)
+0505 3D                   		dec 	a
+0506 32 08 C0             		ld	(ram_pontimeout),a
+0509 F2 00 00             		jp	p,@end 
+050C AF                   		xor 	a
+050D 32 08 C0             		ld	(ram_pontimeout),a
+0510                      		
+0510 CD 00 00             		call	Pon_Random
+0513                      		
+0513 3A 01 C0             		ld	a,(ram_scrlspd)
+0516 47                   		ld	b,a
+0517 3A 00 C0             		ld	a,(ram_scrltmr)
+051A 3C                   		inc 	a
+051B 32 00 C0             		ld	(ram_scrltmr),a
+051E B8                   		cp	b
+051F DA 00 00             		jp	c,@end
+0522 AF                   		xor	a
+0523 32 00 C0             		ld	(ram_scrltmr),a
+0526                      		
+0526                      		;Scroll up
+0526 3A 7F C3             		ld	a,(ram_vscroll)		; scroll vertically
+0529 3C                   		inc	a
+052A 32 7F C3             		ld	(ram_vscroll),a
+052D                       		
+052D 3A 02 C0             		ld	a,(ram_scrlflag)
+0530 3C                   		inc	a
+0531 32 02 C0             		ld      (ram_scrlflag),a
+0534 CB 67                		bit 	4,a
+0536 CA 00 00             		jp	z,@end
+0539 3A 03 C0             		ld	a,(ram_scrlpos)		; inc field pos
+053C 3C                   		inc	a
+053D FE 0E                		cp	0Eh
+053F DA 00 00             		jp	c,@lowpos
+0542 AF                   		xor	a
+0543                      @lowpos:
+0543 32 03 C0             		ld      (ram_scrlpos),a
+0546 CD 00 00             		call	Pon_Random		; generate new random
+0549 CD 00 00             		call	Pon_DelNewLine		; scroll field and make new line
+054C CD 00 00              		call	Pon_CheckBlocks		; check blocks
+054F CD 00 00             		call	Pon_Refresh		; refresh
+0552                      		
+0552 3A 06 C0             		ld	a,(ram_ponflags)
+0555 CB FF                		set 	bitDecCur,a
+0557 32 06 C0             		ld      (ram_ponflags),a
+055A                      		
+055A AF                   		xor	a			; reset flag timer
+055B 32 02 C0             		ld	(ram_scrlflag),a
+055E                      @end:
+055E                      ; 		call	Pon_RotBg
+055E C9                   		ret
+055F                      
+055F                      ; -------------------------
+055F                      
+055F                      Pon_Controls:
+055F 3A 9C C3             		ld	a,(ram_joypads+on_press)
+0562 57                   		ld	d,a
+0563                      		
+0563                      ; ----------------
+0563                      ; RIGHT
+0563                      ; ----------------
+0563                      
+0563 CB 5A                		bit 	bitJoyRight,d
+0565 CA 00 00             		jp	z,@not_right
+0568 3A 07 C0             		ld	a,(ram_poncurpos)
+056B 3C                   		inc 	a
+056C E6 0F                		and 	0Fh
+056E FE 05                		cp	5
+0570 CA 00 00             		jp	z,@not_right
+0573 47                   		ld	b,a
+0574 3A 07 C0             		ld	a,(ram_poncurpos)
+0577 E6 F0                		and 	0F0h
+0579 B0                   		or	b
+057A 32 07 C0             		ld	(ram_poncurpos),a
+057D                      @not_right:
+057D                      
+057D                      ; ----------------
+057D                      ; LEFT
+057D                      ; ----------------
+057D                      
+057D CB 52                		bit 	bitJoyLeft,d
+057F CA 00 00             		jp	z,@not_left
+0582 3A 07 C0             		ld	a,(ram_poncurpos)
+0585 3D                   		dec	a
+0586 E6 0F                		and 	0Fh
+0588 FE 0F                		cp	0Fh
+058A CA 00 00             		jp	z,@not_left
+058D 47                   		ld	b,a
+058E 3A 07 C0             		ld	a,(ram_poncurpos)
+0591 E6 F0                		and 	0F0h
+0593 B0                   		or	b
+0594 32 07 C0             		ld	(ram_poncurpos),a
+0597                      @not_left:
+0597                      
+0597                      ; ----------------
+0597                      ; UP
+0597                      ; ----------------
+0597                      
+0597 CB 42                		bit 	bitJoyUp,d
+0599 CA 00 00             		jp	z,@not_up
+059C 3A 07 C0             		ld	a,(ram_poncurpos)
+059F 47                   		ld	b,a
+05A0 D6 10                		sub	10h
+05A2 32 07 C0             		ld	(ram_poncurpos),a
+05A5 78                   		ld	a,b
+05A6 E6 F0                		and 	0F0h
+05A8 FE 00                		cp	0
+05AA C2 00 00             		jp	nz,@not_up
+05AD 78                   		ld	a,b
+05AE E6 0F                		and	0Fh
+05B0 32 07 C0             		ld	(ram_poncurpos),a
+05B3                      @not_up:
+05B3                      
+05B3                      ; ----------------
+05B3                      ; DOWN
+05B3                      ; ----------------
+05B3                      
+05B3 CB 4A                		bit 	bitJoyDown,d
+05B5 CA 00 00             		jp	z,@not_down
+05B8 3A 07 C0             		ld	a,(ram_poncurpos)
+05BB C6 10                		add 	10h
+05BD 47                   		ld	b,a
+05BE 0E 80                		ld	c,080h
+05C0 3A 06 C0              		ld	a,(ram_ponflags)
+05C3 CB 47                 		bit 	bitFullField,a
+05C5 C2 00 00              		jp	nz,@dont_inc
+05C8 79                    		ld	a,c
+05C9 C6 10                 		add 	10h
+05CB 4F                    		ld	c,a
+05CC                      @dont_inc:
+05CC 3A 07 C0             		ld	a,(ram_poncurpos)
+05CF E6 F0                		and	0F0h
+05D1 B9                   		cp	c
+05D2 CA 00 00             		jp	z,@not_down
+05D5                      		
+05D5 78                   		ld	a,b
+05D6 32 07 C0             		ld	(ram_poncurpos),a
+05D9 3A 06 C0             		ld	a,(ram_ponflags)
+05DC CB BF                		res 	bitDecCur,a
+05DE 32 06 C0             		ld	(ram_ponflags),a
+05E1                      @not_down:
+05E1 CD 00 00             		call	Pon_Cursor
+05E4                      
+05E4                      ; ----------------
+05E4                      
+05E4                      ; ----------------
+05E4                      ; Joy1
+05E4                      ; ----------------
+05E4                      
+05E4 3A 9B C3             		ld	a,(ram_joypads+on_hold)
+05E7 CB 67                		bit 	bitJoy1,a
+05E9 CA 00 00             		jp	z,@not_Joy1
+05EC AF                   		xor 	a
+05ED 32 08 C0             		ld	(ram_pontimeout),a
+05F0                      		
+05F0                      @not_Joy1:
+05F0 3A 9C C3             		ld	a,(ram_joypads+on_press)
+05F3 CB 6F                		bit 	bitJoy2,a
+05F5 CA 00 00             		jp	z,@not_Joy2
+05F8 CD 00 00             		call	Pon_SwapBlocks
+05FB CD 00 00              		call	Pon_CheckBlocks
+05FE CD 00 00             		call	Pon_Refresh
+0601                      @not_Joy2:
+0601 C9                   		ret
+0602                      		
+0602                      ; ====================================================================
+0602                      ; -------------------------
+0602                      ; Subs
+0602                      ; -------------------------
+0602                      
+0602                      ; -------------------------
+0602                      ;
+0602                      ; -------------------------
+0602                      
+0602                      Pon_InitField:	
+0602 DD 21 09 C0          		ld	ix,ram_ponfield
+0606                      		
+0606 06 30                		ld	b,6*8			;cleanup
+0608                      @loop_1:
+0608 3E 00                		ld	a,0
+060A DD 77 00             		ld	(ix),a
+060D DD 23                 		inc 	ix
+060F 10 F7                 		djnz	@loop_1
+0611                       		
+0611 0E 03                 		ld	c,3			;HEIGHT
+0613                      @loop_3:
+0613 06 06                		ld	b,6			;WIDTH
+0615 16 00                		ld	d,0
+0617                      @loop_2:
+0617 3A 82 C3             		ld	a,(ram_vintframes)
+061A 5F                    		ld	e,a
+061B 3A 04 C0              		ld	a,(ram_ponrand)
+061E 83                    		add 	e
+061F 5F                    		ld	e,a
+0620 3A 05 C0              		ld	a,(ram_ponrnd2)
+0623 0F                    		rrca	a
+0624 3C                    		inc 	a
+0625 32 05 C0              		ld	(ram_ponrnd2),a
+0628 83                    		add 	e
+0629 32 04 C0              		ld	(ram_ponrand),a
+062C                       		
+062C E6 07                 		and	7
+062E CA 17 06              		jp	z,@loop_2
+0631 FE 06                 		cp	6
+0633 D2 17 06              		jp	nc,@loop_2
+0636 BA                    		cp	d
+0637 CA 17 06              		jp	z,@loop_2
+063A 57                    		ld	d,a
+063B                       		
+063B DD 77 00             		ld	(ix),a
+063E DD 23                 		inc 	ix
+0640 10 D5                 		djnz	@loop_2
+0642                       		
+0642 3A 82 C3             		ld	a,(ram_vintframes)
+0645 E6 1F                		and	1Fh
+0647 5F                    		ld	e,a
+0648 3A 04 C0              		ld	a,(ram_ponrand)
+064B 83                    		add 	e
+064C 3C                    		inc 	a
+064D 0F                    		rrca	
+064E 5F                    		ld	e,a
+064F 3A 05 C0              		ld	a,(ram_ponrnd2)
+0652 0F                    		rrca	a
+0653 3C                    		inc 	a
+0654 32 05 C0              		ld	(ram_ponrnd2),a
+0657 83                    		add 	e
+0658 0D                    		dec 	c
+0659 C2 13 06              		jp	nz,@loop_3
+065C                       		
+065C 3A 81 C3              		ld	a,(ram_vintwait)	; we are scrolling down
+065F CB B7                 		res 	bitVerDir,a
+0661 32 81 C3              		ld	(ram_vintwait),a
+0664 C9                   		ret
+0665                      		
+0665                      ; -------------------------
+0665                      ;
+0665                      ; -------------------------
+0665                      
+0665                      Pon_DelNewLine:
+0665 DD 21 09 C0          		ld	ix,ram_ponfield
+0669 FD 21 0F C0          		ld	iy,ram_ponfield+6
+066D 0E 0A                		ld	c,10
+066F                      @next_y:
+066F 06 06                		ld	b,6
+0671                      @next_x:
+0671 FD 7E 00             		ld	a,(iy)
+0674 DD 77 00             		ld	(ix),a
+0677 DD 23                		inc 	ix
+0679 FD 23                		inc 	iy
+067B 10 F4                		djnz	@next_x
+067D 0D                   		dec 	c
+067E C2 6F 06             		jp	nz,@next_y
+0681                      		
+0681 FD 21 45 C0          		ld	iy,ram_ponfield+(6*10)
+0685                      		;make new line
+0685 06 06                		ld	b,6
+0687 16 00                		ld	d,0
+0689                      @newext_x:
+0689 3A 82 C3              		ld	a,(ram_vintframes)
+068C 4F                    		ld	c,a
+068D 3A 04 C0              		ld	a,(ram_ponrand)
+0690 07                    		rlca
+0691 81                    		add 	c
+0692 4F                    		ld	c,a
+0693 3A 05 C0              		ld	a,(ram_ponrnd2)
+0696 0F                    		rrca
+0697 81                    		add 	c
+0698 32 05 C0              		ld	(ram_ponrnd2),a
+069B 81                    		add 	c
+069C 32 04 C0              		ld	(ram_ponrand),a
+069F                       		
+069F E6 07                 		and	7
+06A1 CA 89 06              		jp	z,@newext_x
+06A4 FE 06                 		cp	6
+06A6 D2 89 06              		jp	nc,@newext_x
+06A9 BA                    		cp	d
+06AA CA 89 06              		jp	z,@newext_x
+06AD 57                    		ld	d,a
+06AE                       		
+06AE FD 7E 00              		ld	a,(iy)
+06B1 BA                    		cp	d
+06B2 CA 89 06              		jp	z,@newext_x
+06B5                       		
+06B5 7A                    		ld	a,d
+06B6 DD 77 00             		ld	(ix),a
+06B9 DD 23                		inc 	ix
+06BB FD 23                		inc 	iy
+06BD 10 CA                		djnz	@newext_x
+06BF C9                   		ret
+06C0                      	
+06C0                      ; -------------------------
+06C0                      ;
+06C0                      ; -------------------------
+06C0                      
+06C0                      Pon_Random:
+06C0 3A 82 C3             		ld	a,(ram_vintframes)
+06C3 47                   		ld	b,a
+06C4 3A 04 C0             		ld	a,(ram_ponrand)
+06C7 80                   		add 	b
+06C8 32 04 C0             		ld	(ram_ponrand),a
+06CB C9                   		ret
+06CC                      		
+06CC                      ; -------------------------
+06CC                      ;
+06CC                      ; -------------------------
+06CC                      
+06CC                      Pon_Refresh:
+06CC F3                   		di				;TODO: no mames. mejorar esto despues
+06CD DD 21 09 C0          		ld	ix,ram_ponfield
+06D1 01 00 00             		ld	bc,0
+06D4 11 00 00             		ld	de,0
+06D7 3A 03 C0             		ld	a,(ram_scrlpos)
+06DA CB 27                		sla	a
+06DC CB 27                		sla	a
+06DE CB 27                		sla	a
+06E0 CB 27                		sla	a
+06E2 CB 27                		sla	a
+06E4 CB 27                		sla	a
+06E6 CB 27                		sla	a
+06E8 6F                   		ld	l,a
+06E9 3A 03 C0               		ld	a,(ram_scrlpos)
+06EC CB 3F                  		srl	a
+06EE E6 07                  		and 	7
+06F0 F6 38                  		or	38h
+06F2 67                     		ld	h,a
+06F3                      		
+06F3 0E 0B                		ld	c,11
+06F5                      @next_y:
+06F5 E5                   		push	hl
+06F6 06 06                		ld	b,6
+06F8                      @next_x:
+06F8 DD 7E 00             		ld	a,(ix)
+06FB E6 7F                		and 	7Fh
+06FD 5F                   		ld	e,a
+06FE DD 23                		inc	ix
+0700 C5                   		push	bc
+0701 E5                   		push	hl
+0702 CD 00 00             		call	draw_block
+0705 E1                   		pop	hl
+0706 11 04 00             		ld	de,4
+0709 19                   		add 	hl,de
+070A C1                   		pop	bc
+070B 10 EB                		djnz	@next_x
+070D                      		
+070D E1                   		pop	hl
+070E 11 80 00             		ld	de,80h
+0711 19                   		add 	hl,de
+0712 7C                   		ld	a,h
+0713 FE 3F                		cp	3Fh
+0715 C2 00 00             		jp	nz,@not_top
+0718 3E 38                		ld	a,38h
+071A                      @not_top:
+071A 67                    		ld	h,a
+071B 0D                   		dec 	c
+071C C2 F5 06             		jp	nz,@next_y
+071F FB                   		ei				;TODO: no mames. mejorar esto despues
+0720 C9                   		ret
+0721                      		
+0721                      ; -------------------------
+0721                      
+0721                      draw_block:
+0721 16 08                		ld	d,08h		;xx00 pal 2
+0723 7B                   		ld	a,e
+0724 FE 00                		cp	0
+0726 C2 00 00             		jp	nz,@notzero
+0729 16 00                		ld	d,0
+072B                      @notzero:
+072B CB 27                		sla	a
+072D CB 27                		sla	a
+072F F6 80                		or	80h		;at xx80h
+0731 5F                   		ld	e,a
+0732                      		
+0732                      		;TOP PIECES
+0732 7D                   		ld      a,l
+0733 D3 BF                		out     (Vcom),a
+0735 7C                   		ld      a,h
+0736 F6 40                		or      Writemask
+0738 D3 BF                		out     (Vcom),a
+073A 7B                   		ld      a,e		;X-
+073B D3 BE                		out     (Vdata),a
+073D 7A                   		ld      a,d
+073E D3 BE                		out     (Vdata),a
+0740 13                   		inc 	de
+0741 7B                   		ld      a,e		;X-
+0742 D3 BE                		out     (Vdata),a
+0744 7A                   		ld      a,d
+0745 D3 BE                		out     (Vdata),a
+0747 13                   		inc 	de
+0748                      		
+0748                      		;BOTTOM PIECES
+0748 01 40 00             		ld	bc,40h
+074B 09                   		add	hl,bc
+074C 7C                   		ld	a,h
+074D E6 3F                		and	3Fh
+074F 67                   		ld	h,a
+0750                      		
+0750 7D                   		ld      a,l            ; 1st 8 bits
+0751 D3 BF                		out     (Vcom),a
+0753 7C                   		ld      a,h            ; 2nd 8 bits
+0754 F6 40                		or      Writemask      ; set write mode
+0756 D3 BF                		out     (Vcom),a
+0758 7B                   		ld      a,e		;X-
+0759 D3 BE                		out     (Vdata),a
+075B 7A                   		ld      a,d
+075C D3 BE                		out     (Vdata),a
+075E 13                   		inc 	de
+075F 7B                   		ld      a,e		;X-
+0760 D3 BE                		out     (Vdata),a
+0762 7A                   		ld      a,d
+0763 D3 BE                		out     (Vdata),a
+0765 13                   		inc 	de
+0766 C9                   		ret
+0767                      		
+0767                      ; -------------------------
+0767                      ;
+0767                      ; -------------------------
+0767                      
+0767                      Pon_Cursor:
+0767 DD 21 7F C2          		ld	ix,ram_sprbuffer
+076B 0E A4                		ld	c,0A4h
+076D 3A 07 C0             		ld	a,(ram_poncurpos)
+0770 47                   		ld	b,a
+0771 E6 F0                		and 	0F0h
+0773 C6 18                		add 	18h
+0775 57                   		ld	d,a
+0776 78                   		ld	a,b
+0777 E6 F0                		and	0F0h
+0779                      ; 		cp	0
+0779                      ; 		jp	z,@zeroy
+0779                      		
+0779 3A 06 C0             		ld	a,(ram_ponflags)
+077C CB 7F                		bit 	bitDecCur,a
+077E CA 00 00             		jp	z,@dont_dec
+0781 3A 07 C0             		ld	a,(ram_poncurpos)
+0784 FE 00                		cp	0
+0786 CA 00 00             		jp	z,@itsonz
+0789 D6 10                		sub 	10h
+078B 32 07 C0             		ld	(ram_poncurpos),a
+078E                      @itsonz:
+078E E6 F0                		and 	0F0h
+0790 C6 18                		add 	18h
+0792 57                   		ld	d,a
+0793 3A 06 C0             		ld	a,(ram_ponflags)
+0796 CB BF                		res 	bitDecCur,a
+0798 32 06 C0             		ld	(ram_ponflags),a
+079B                      @dont_dec:
+079B                      		
+079B 3A 02 C0              		ld	a,(ram_scrlflag)
+079E 2F                    		cpl
+079F 47                    		ld	b,a
+07A0 7A                    		ld	a,d
+07A1 80                    		add 	b
+07A2 57                    		ld	d,a
+07A3                      ;  		cp	18h
+07A3                      ;  		jp	nc,@zeroy
+07A3                      ;  		ld	a,(ram_poncurpos)
+07A3                      ;  		and 	00Fh
+07A3                      ;  		ld	(ram_poncurpos),a
+07A3                      ;  		ld	d,18h
+07A3                      @zeroy:
+07A3                      
+07A3 3A 07 C0             		ld	a,(ram_poncurpos)
+07A6 CB 27                		sla	a
+07A8 CB 27                		sla	a
+07AA CB 27                		sla	a
+07AC CB 27                		sla	a
+07AE C6 30                		add 	30h
+07B0 5F                   		ld	e,a
+07B1                      		
+07B1 7A                   		ld	a,d
+07B2 DD 77 00             		ld	(ix),a
+07B5 7B                   		ld	a,e
+07B6 DD 77 01             		ld	(ix+1),a
+07B9 79                   		ld	a,c
+07BA DD 77 02             		ld	(ix+2),a
+07BD DD 23                		inc 	ix
+07BF DD 23                		inc	ix
+07C1 DD 23                		inc 	ix
+07C3 7A                   		ld	a,d
+07C4 DD 77 00             		ld	(ix),a
+07C7 7B                   		ld	a,e
+07C8 C6 18                		add 	18h
+07CA DD 77 01             		ld	(ix+1),a
+07CD 79                   		ld	a,c
+07CE 3C                   		inc 	a
+07CF DD 77 02             		ld	(ix+2),a
+07D2 DD 23                		inc 	ix
+07D4 DD 23                		inc	ix
+07D6 DD 23                		inc 	ix
+07D8                      		
+07D8 7A                   		ld	a,d
+07D9 C6 08                		add 	8h
+07DB DD 77 00             		ld	(ix),a
+07DE 7B                   		ld	a,e
+07DF DD 77 01             		ld	(ix+1),a
+07E2 79                   		ld	a,c
+07E3 C6 02                		add 	2
+07E5 DD 77 02             		ld	(ix+2),a
+07E8 DD 23                		inc 	ix
+07EA DD 23                		inc	ix
+07EC DD 23                		inc 	ix
+07EE 7A                   		ld	a,d
+07EF C6 08                		add 	8h
+07F1 DD 77 00             		ld	(ix),a
+07F4 7B                   		ld	a,e
+07F5 C6 18                		add 	18h
+07F7 DD 77 01             		ld	(ix+1),a
+07FA 79                   		ld	a,c
+07FB C6 03                		add 	3
+07FD DD 77 02             		ld	(ix+2),a
+0800 DD 23                		inc 	ix
+0802 DD 23                		inc	ix
+0804 DD 23                		inc 	ix
+0806                      		
+0806 C9                   		ret
+0807                      		
+0807                      ; -------------------------
+0807                      ;
+0807                      ; -------------------------
+0807                      
+0807                      Pon_SwapBlocks:
+0807 DD 21 09 C0          		ld	ix,ram_ponfield
+080B 11 00 00             		ld	de,0
+080E 3A 07 C0             		ld	a,(ram_poncurpos)
+0811 E6 0F                		and 	00Fh
+0813 5F                   		ld	e,a
+0814 DD 19                		add 	ix,de
+0816 3A 07 C0             		ld	a,(ram_poncurpos)
+0819 0F                   		rrca
+081A 0F                   		rrca
+081B 0F                   		rrca
+081C 0F                   		rrca
+081D E6 0F                		and 	00Fh
+081F CA 00 00             		jp	z,@nxtzero
+0822 4F                   		ld	c,a
+0823                      @nxtline_y:
+0823 06 06                		ld	b,6
+0825                      @nxtline_x:
+0825 DD 23                		inc 	ix
+0827 10 FC                		djnz	@nxtline_x
+0829 0D                   		dec 	c
+082A C2 23 08             		jp	nz,@nxtline_y
+082D                      @nxtzero:
+082D                      
+082D DD 7E 00             		ld	a,(ix)
+0830 47                   		ld	b,a
+0831 DD 7E 01             		ld	a,(ix+1)
+0834 DD 77 00             		ld	(ix),a
+0837 78                   		ld	a,b
+0838 DD 77 01             		ld	(ix+1),a
+083B C9                   		ret
+083C                      
+083C                      ; -------------------------
+083C                      ;
+083C                      ; -------------------------
+083C                      
+083C                      Pon_CheckBlocks:
+083C                      
+083C                      		;horizontally
+083C                      			
+083C DD 21 09 C0           		ld	ix,ram_ponfield
+0840 FD 21 0A C0           		ld	iy,ram_ponfield+1
+0844 0E 09                  		ld 	c,9
+0846                      @next_line_x:
+0846 DD E5                		push 	ix
+0848 FD E5                		push 	iy
+084A 06 05                 		ld	b,6-1
+084C                      @nxt_first:
+084C FD E5                		push 	iy
+084E DD 5E 00              		ld	e,(ix)
+0851 7B                    		ld	a,e
+0852 FE 00                 		cp	0
+0854 CA 00 00              		jp	z,@not_equ
+0857                      @equ_next:
+0857 FD 56 00              		ld	d,(iy)
+085A 7B                    		ld	a,e
+085B BA                    		cp	d
+085C C2 00 00              		jp	nz,@not_equ
+085F                       		
+085F DD 7E 00              		ld	a,(ix)
+0862 CB FF                 		set 	7,a
+0864 DD 77 00              		ld	(ix),a
+0867 FD 7E 00              		ld	a,(iy)
+086A CB FF                 		set 	7,a
+086C FD 77 00              		ld	(iy),a
+086F                      
+086F FD 23                 		inc 	iy
+0871 78                    		ld 	a,b
+0872 FE 01                 		cp	1
+0874 CA 00 00              		jp	z,@not_equ
+0877 C3 57 08              		jp	@equ_next 		
+087A                      @not_equ:
+087A DD 23                 		inc 	ix
+087C FD E1                 		pop	iy
+087E FD 23                 		inc 	iy
+0880 10 CA                		djnz 	@nxt_first
+0882                      		
+0882 FD E1                		pop 	iy
+0884 DD E1                		pop	ix
+0886 11 06 00             		ld 	de,6
+0889 DD 19                		add 	ix,de
+088B FD 19                		add 	iy,de
+088D 0D                   		dec 	c
+088E C2 46 08             		jp	nz,@next_line_x
+0891                      	
+0891                      ; -------------------------
+0891                      
+0891                      ;   		;vertically
+0891 DD 21 09 C0            		ld	ix,ram_ponfield
+0895 FD 21 0F C0            		ld	iy,ram_ponfield+6		;+width
+0899 0E 06                  		ld 	c,6
+089B                      @next_line_y:
+089B DD E5                		push 	ix
+089D FD E5                		push 	iy
+089F 06 08                  		ld	b,(9)-1
+08A1                      @nxtv_first:
+08A1 FD E5                  		push	iy
+08A3 DD 5E 00             		ld	e,(ix)
+08A6 7B                   		ld	a,e
+08A7 FE 00                 		cp	0
+08A9 CA 00 00              		jp	z,@not_equv
+08AC                      @equv_next:
+08AC FD 56 00              		ld	d,(iy)
+08AF 7B                    		ld	a,e
+08B0 BA                    		cp	d
+08B1 C2 00 00              		jp	nz,@not_equv
+08B4                       		
+08B4 DD 7E 00              		ld	a,(ix)
+08B7 CB FF                 		set 	7,a
+08B9 DD 77 00              		ld	(ix),a
+08BC FD 7E 00              		ld	a,(iy)
+08BF CB FF                 		set 	7,a
+08C1 FD 77 00              		ld	(iy),a
+08C4                       		
+08C4 D5                     		push	de
+08C5 11 06 00              		ld	de,6
+08C8 FD 19                 		add 	iy,de
+08CA D1                    		pop	de
+08CB 78                       		ld 	a,b
+08CC FE 01                    		cp	1
+08CE CA 00 00                 		jp	z,@not_equv
+08D1 C3 AC 08               		jp	@equv_next
+08D4                      @not_equv:
+08D4 11 06 00              		ld	de,6
+08D7 DD 19                 		add 	ix,de
+08D9 FD E1                 		pop	iy
+08DB FD 19                 		add 	iy,de
+08DD 10 C2                 		djnz 	@nxtv_first
+08DF                      		
+08DF FD E1                		pop 	iy
+08E1 DD E1                		pop	ix
+08E3 DD 23                		inc 	ix
+08E5 FD 23                		inc 	iy
+08E7 0D                   		dec 	c
+08E8 C2 9B 08             		jp	nz,@next_line_y
+08EB                      		
+08EB                      ; -------------------------
+08EB                      
+08EB                      		;check top 
+08EB                      		
+08EB 21 09 C0             		ld	hl,ram_ponfield
+08EE 06 06                		ld	b,6
+08F0 3A 06 C0             		ld	a,(ram_ponflags)
+08F3 4F                   		ld	c,a
+08F4 3A 02 C0             		ld	a,(ram_scrlflag)
+08F7 57                   		ld	d,a
+08F8 CB 81                		res 	bitFullField,c
+08FA                      @next:
+08FA 7E                   		ld	a,(hl)
+08FB FE 00                		cp	0
+08FD CA 00 00             		jp	z,@dont_set
+0900 CB C1                		set 	bitFullField,c
+0902 06 00                		ld	b,0
+0904 7A                   		ld	a,d
+0905 AF                   		xor	a
+0906 57                   		ld	d,a
+0907                      @dont_set:
+0907 23                   		inc 	hl
+0908 10 F0                   		djnz	@next
+090A                      		
+090A 79                   		ld	a,c
+090B 32 06 C0             		ld	(ram_ponflags),a
+090E 7A                   		ld	a,d
+090F 32 02 C0             		ld	(ram_scrlflag),a
+0912                      		
+0912                      ; -------------------------
+0912                      
+0912                      		;delete the ones set
+0912                      		
+0912 21 09 C0             		ld	hl,ram_ponfield
+0915 06 36                		ld	b,6*9
+0917                      @nextvalid:
+0917 7E                   		ld	a,(hl)
+0918 CB 7F                		bit 	7,a
+091A CA 00 00             		jp	z,@stay
+091D AF                   		xor 	a
+091E 77                   		ld	(hl),a
+091F 3E 7F                		ld	a,7Fh
+0921 32 08 C0             		ld	(ram_pontimeout),a
+0924                      @stay:
+0924 23                   		inc 	hl
+0925 10 F0                		djnz 	@nextvalid
+0927                      		
+0927                      ; -------------------------
+0927                      
+0927 C9                   		ret
+0928                      		
+0928                      ; -------------------------
+0928                      ;
+0928                      ; -------------------------
+0928                      
+0928                      Pon_InitBg:
+0928 21 18 38             		ld	hl,screen+18h
+092B 11 40 00             		ld	de,40h
+092E 0E 1C                		ld	c,1Ch
+0930                      @loop_y:
+0930 E5                   		push	hl
+0931                      		
+0931 7D                   		ld	a,l
+0932 D3 BF                		out 	(Vcom),a
+0934 7C                   		ld	a,h
+0935 F6 40                		or	Writemask
+0937 D3 BF                		out 	(Vcom),a
+0939 3E AE                		ld	a,0AEh
+093B D3 BE                		out 	(Vdata),a
+093D AF                   		xor	a
+093E D3 BE                		out 	(Vdata),a
+0940                      		
+0940 11 0E 00             		ld	de,0Eh
+0943 19                   		add 	hl,de
+0944                      		
+0944 7D                   		ld	a,l
+0945 D3 BF                		out 	(Vcom),a
+0947 7C                   		ld	a,h
+0948 F6 40                		or	Writemask
+094A D3 BF                		out 	(Vcom),a
+094C 3E AF                		ld	a,0AFh
+094E D3 BE                		out 	(Vdata),a
+0950 AF                   		xor	a
+0951 D3 BE                		out 	(Vdata),a
+0953                      		
+0953 E1                   		pop	hl
+0954 11 40 00             		ld	de,40h
+0957 19                   		add 	hl,de
+0958                      		
+0958 0D                   		dec	c
+0959 C2 30 09             		jp	nz,@loop_y
+095C C9                    		ret
+095D                      	
+095D                      ; -------------------------
+095D                      ;
+095D                      ; -------------------------
+095D                      
+095D                      Pon_RotBg:
+095D 3A 02 C0             		ld	a,(ram_scrlflag)
+0960 E6 07                		and	7
+0962 CB 27                		sla	a
+0964 CB 27                		sla	a
+0966 CB 27                		sla	a
+0968 CB 27                		sla	a
+096A CB 27                		sla	a
+096C 11 00 00             		ld	de,0
+096F 5F                   		ld	e,a
+0970                      		
+0970 21 00 14             		ld	hl,1400h;1400h
+0973 7D                   		ld	a,l
+0974 D3 BF                		out 	(Vcom),a
+0976 7C                   		ld	a,h
+0977 F6 40                		or	Writemask
+0979 D3 BF                		out 	(Vcom),a
+097B                      		
+097B DD 21 00 00          		ld	ix,art_ponbg
+097F DD 19                		add 	ix,de
+0981 06 20                		ld	b,20h
+0983                      @loop:
+0983 DD 7E 00             		ld	a,(ix)
+0986 D3 BE                		out 	(Vdata),a
+0988 DD 23                		inc 	ix
+098A 10 F7                		djnz	@loop
+098C                      		
+098C C9                   		ret
+098D                      		
+098D                      ; -------------------------
+098D                      ; Pon_MakeHudSpr
+098D                      ; 
+098D                      ; hl - data
+098D                      ; -------------------------
+098D                      
+098D                      Pon_MakeHudSpr:
+098D DD 21 8B C2          		ld	ix,ram_sprbuffer+4*3
+0991                      		
+0991                      ;  		ld	hl,data_topbrd
+0991                      ;  		ld	de,9018h	
+0991                      ;  		call	@print_spr
+0991                      ;  		ld	hl,data_botbrd
+0991                      ;  		ld	de,90A0h	
+0991                      ;  		call	@print_spr
+0991                      		
+0991 21 00 00             		ld	hl,str_score
+0994 11 28 98             		ld	de,9828h
+0997 CD 00 00             		call	@print_spr
+099A 21 00 00             		ld	hl,str_time
+099D 11 58 98             		ld	de,9858h
+09A0 CD 00 00             		call	@print_spr
+09A3                      		
+09A3 21 00 00               		ld	hl,str_zeros
+09A6 11 38 98               		ld	de,9838h	
+09A9 CD 00 00               		call	@print_spr
+09AC 21 00 00               		ld	hl,str_zerot
+09AF 11 68 98             		ld	de,9868h	
+09B2                      ;   		call	@print_spr
+09B2                      ; 		ret
+09B2                      		
+09B2                      		
+09B2                      @print_spr:
+09B2 7E                   		ld	a,(hl)
+09B3 FE 00                		cp 	0
+09B5 CA 00 00             		jp	z,@end
+09B8 47                   		ld	b,a
+09B9 7B                   		ld	a,e
+09BA DD 77 00             		ld	(ix),a
+09BD 7A                   		ld	a,d
+09BE DD 77 01             		ld	(ix+1),a
+09C1 78                   		ld	a,b
+09C2 DD 77 02             		ld	(ix+2),a
+09C5 DD 23                		inc 	ix
+09C7 DD 23                		inc 	ix
+09C9 DD 23                		inc 	ix
+09CB 23                   		inc 	hl
+09CC 7A                   		ld	a,d
+09CD C6 08                		add 	8
+09CF 57                   		ld	d,a
+09D0 C3 B2 09             		jp	@print_spr
+09D3                      @end
+09D3 C9                   		ret
+09D4                      		
+09D4                      ; ====================================================================
+09D4                      ; -------------------------
+09D4                      ; Data
+09D4                      ; -------------------------
+09D4                      
+09D4 53 43 4F 52 45 00    str_score:	db "SCORE",0
+09DA 54 49 4D 45 00       str_time:	db "TIME",0
+09DF 30 30 30 30 30 30 +  str_zeros:	db "000000",0
+09E6 30 30 3A 30 30 00    str_zerot:	db "00:00",0
+09EC                      
+09EC A8 A9 A9 A9 A9 A9 +  data_topbrd:	db 0A8h,0A9h,0A9h,0A9h,0A9h,0A9h,0A9h,0AAh,0
+09F5 AB AC AC AC AC AC +  data_botbrd:	db 0ABh,0ACh,0ACh,0ACh,0ACh,0ACh,0ACh,0ADh,0
+09F5 AB AC AC AC AC AC +  data_botbrd:	db 0ABh,0ACh,0ACh,0ACh,0ACh,0ACh,0ACh,0ADh,0
+09FE                      		
+09FE                      ; ====================================================================
+09FE                      ; -------------------------------------------------
+09FE                      ; Sound
+09FE                      ; -------------------------------------------------
+09FE                      
+09FE                       		include "sound/code.asm"
+09FE                      ; ================================================================
+09FE                      ; SMEG Junior
+09FE                      ; Sound and Music Engine for Game Gear/Master System
+09FE                      ;
+09FE                      ; (C)2015 Kevin C.
+09FE                      ; 
+09FE                      ; ImpulseTracker
+09FE                      ;
+09FE                      ; Ticks:
+09FE                      ; 150 - NTSC
+09FE                      ; 120 - PAL
+09FE                      ; ================================================================
+09FE                      
+09FE                      			rsreset
+09FE =00000148            DrvStatus		rb 1		;Byte
+09FE =00000162            DrvSettings		rb 1		;Byte
+09FE =0000017C            CurrPattern		rb 1		;Byte
+09FE =00000195            PatternEnd		rb 1		;Byte
+09FE =000001AF            PatternLoop		rb 1		;Byte
+09FE                      
+09FE                      
+09FE =000001CA            PattSize		rw 1		;Word
+09FE =000001E1            PattRead		rw 1		;Word
+09FE =000001F9            SongStart		rw 1		;Word
+09FE =00000210            SongRead		rw 1		;Word
+09FE                      
+09FE                      
+09FE =0000022C            TicksRead		rb 1		;Byte
+09FE =00000243            TicksSet		rb 1		;Byte
+09FE =0000025A            PsgLast			rb 1		;Byte
+09FE =00000277            DrvSettingsBGM		rb 1		;Byte
+09FE =00000291            Psg_Vibrato		rb 1		;Byte
+09FE =000002AB            Psg_AutoVol		rb 1		;Byte
+09FE                      
+09FE =000002BD            CurrChan		rb 1
+09FE =000002D1            CurrChanType		rb 1
+09FE =000002F4            UsedChnBuff		rb 4		;Array (Bytes)
+09FE                      
+09FE                      ; --------------------------------------------
+09FE                      ; Channel settings
+09FE                      ; --------------------------------------------
+09FE                      
+09FE                      			rsreset
+09FE =0000038F            Chn_Type		rb 1		;Byte
+09FE =000003A5            Chn_ID			rb 1		;Byte
+09FE =000003BC            Chn_Inst		rb 1		;Byte
+09FE =000003D3            Chn_Vol			rb 1		;Byte
+09FE                      
+09FE =000003EC            Chn_Freq		rw 1		;Word
+09FE =0000041B            Chn_Effect		rw 1		;Word		;TODO: its backwards
+09FE =00000434            Chn_Portam		rw 1		;Word
+09FE =0000044D            Chn_DefVol		rb 1		;Byte
+09FE =00000464            Chn_Note		rb 1		;Byte
+09FE =0000047E            Chn_Panning		rb 1		;Byte
+09FE =0000049C            Chn_PSG_Vibrato		rb 1		;Byte
+09FE =000004AE            Chn_Unused		rb 2
+09FE =000004C0            sizeof_Chn		rw 0
+09FE                       
+09FE                      ; --------------------------------------------
+09FE                      ; Bits
+09FE                      ; --------------------------------------------
+09FE                      
+09FE =00000541            bitPriority		equ	0
+09FE =00000552            bitSfxOn		equ	1
+09FE =00000566            bitDisabled		equ	2
+09FE                      
+09FE                      ;Status
+09FE =00000582            bitDacOn		equ	0
+09FE =00000595            bitDacNote		equ	1
+09FE =000005A6            bitTone3		equ	2
+09FE =000005BA            bitSpecial3		equ	3
+09FE                      
+09FE                      ; --------------------------------------------
+09FE                      ; Channel IDs
+09FE                      ; --------------------------------------------
+09FE                      
+09FE =0000063F            PSG_1			equ	080h
+09FE =00000651            PSG_2			equ	0A0h
+09FE =00000663            PSG_3			equ	0C0h
+09FE =00000675            NOISE			equ	0E0h
+09FE =00000689            MaxChannels		equ	4
+09FE                      
+09FE                      ; --------------------------------------------
+09FE                      ; .IT request ($80+) format
+09FE                      ; --------------------------------------------
+09FE                      
+09FE =0000071B            bitNote			equ	0
+09FE =0000072C            bitInst			equ	1
+09FE =0000073E            bitVolume		equ	2
+09FE =00000750            bitEffect		equ	3
+09FE =00000764            bitSameNote		equ	4
+09FE =00000778            bitSameInst		equ	5
+09FE =0000078B            bitSameVol		equ	6
+09FE =000007A1            bitSameEffect		equ	7
+09FE                      
+09FE                      ; --------------------------------------------
+09FE                      ; RAM
+09FE                      ; --------------------------------------------
+09FE                      
+09FE                      			rsset ram_sounddriver
+09FE =0000083F            RAM_SMEG_Buffer		rb 48h
+09FE =00000858            RAM_SMEG_SfxBuff	rb 48h
+09FE =00000875            RAM_SMEG_Chnls_BGM	rb 10h*4
+09FE =00000892            RAM_SMEG_Chnls_SFX	rb 10h*4
+09FE =000008A5            sizeof_SMEG		rb 0
+09FE                      
+09FE                      ; ================================================================
+09FE                      ; -------------------------------------------
+09FE                      ; Init
+09FE                      ; -------------------------------------------
+09FE                      
+09FE                      SMEG_Init:
+09FE 21 00 C1             		ld	hl,RAM_SMEG_Buffer
+0A01 06 FF                		ld	b,0FFh
+0A03 AF                   		xor	a
+0A04                      @clrall:	
+0A04 77                   		ld	(hl),a
+0A05 23                   		inc	hl
+0A06 10 FC                		djnz	@clrall
+0A08                      		
+0A08 AF                   		xor	a
+0A09 CB D7                		set 	bitDisabled,a
+0A0B 32 00 C1             		ld	(RAM_SMEG_Buffer),a
+0A0E C9                   		ret
+0A0F                      		
+0A0F                      ; -------------------------------------------
+0A0F                      ; Stop ALL Sound
+0A0F                      ; -------------------------------------------
+0A0F                      
+0A0F                      SMEG_StopSnd:
+0A0F 21 00 C1             		ld	hl,RAM_SMEG_Buffer
+0A12 7E                   		ld	a,(hl)
+0A13 CB D7                		set 	bitDisabled,a
+0A15 77                   		ld	(hl),a
+0A16 21 48 C1             		ld	hl,RAM_SMEG_SfxBuff
+0A19 7E                   		ld	a,(hl)
+0A1A CB D7                		set 	bitDisabled,a
+0A1C 77                   		ld	(hl),a
+0A1D                      		
+0A1D 3E 9F                		ld	a,09Fh
+0A1F D3 7F                		out	(7Fh),a
+0A21 3E BF                		ld	a,0BFh
+0A23 D3 7F                		out	(7Fh),a
+0A25 3E DF                		ld	a,0DFh
+0A27 D3 7F                		out	(7Fh),a
+0A29 3E FF                		ld	a,0FFh
+0A2B D3 7F                		out	(7Fh),a
+0A2D C9                   		ret
+0A2E                      
+0A2E                      ; -------------------------------------------
+0A2E                      ; Play Song
+0A2E                      ; -------------------------------------------
+0A2E                      
+0A2E                      SMEG_PlaySong:
+0A2E 21 00 C1             		ld	hl,RAM_SMEG_Buffer
+0A31 7E                   		ld	a,(hl)
+0A32 CB 97                		res 	bitDisabled,a
+0A34 77                   		ld	(hl),a
+0A35 C9                   		ret
+0A36                      		
+0A36                      ; -------------------------------------------
+0A36                      ; Load SFX
+0A36                      ;
+0A36                      ; d0 - StartOfSong
+0A36                      ; d1 - Ticks
+0A36                      ; -------------------------------------------
+0A36                      
+0A36                      SMEG_LoadSfx:
+0A36                      ; 		movem.l	a4-a6,-(sp)
+0A36                      ; 		lea	(RAM_SMEG_SfxBuff),a6
+0A36                      ; 		lea	(RAM_SMEG_Chnls_SFX),a5
+0A36                      ; 		clr.b	PcmChnOnOff(a6)
+0A36                      ;                 clr.b	DrvStatus(a6)
+0A36                      ;                 bset	#bitSfxOn,(a6)
+0A36                      ; 		bsr	SMEG_Load_SetChnls
+0A36                      ; 		movem.l	(sp)+,a4-a6
+0A36 C9                   		ret
+0A37                      
+0A37                      ; -------------------------------------------
+0A37                      ; Load Song
+0A37                      ;
+0A37                      ; hl - StartOfSong
+0A37                      ; b - Ticks
+0A37                      ; -------------------------------------------
+0A37                      
+0A37                      SMEG_LoadSong:
+0A37 E5                   		push	hl
+0A38 C5                   		push	bc
+0A39 CD 0F 0A             		call	SMEG_StopSnd			;hl and b are gone
+0A3C C1                   		pop	bc
+0A3D E1                   		pop	hl
+0A3E                      		
+0A3E DD 21 00 C1          		ld	ix,RAM_SMEG_Buffer		;a6
+0A42 FD 21 90 C1          		ld	iy,RAM_SMEG_Chnls_BGM		;a5
+0A46 AF                   		xor	a
+0A47 DD 77 00             		ld	(ix+DrvStatus),a
+0A4A CD 00 00             		call	SMEG_Load_SetChnls
+0A4D C3 00 00             		jp	SMEG_Load_FixBgm
+0A50                      		
+0A50                      ; -----------------------
+0A50                      ; Setup channels
+0A50                      ; 
+0A50                      ; hl - Song
+0A50                      ; b  - Ticks
+0A50                      ; -----------------------
+0A50                      
+0A50                      SMEG_Load_SetChnls:
+0A50 DD 70 0E             		ld	(ix+TicksSet),b
+0A53                      		
+0A53                      ; -----------------------
+0A53                      ; Get instruments
+0A53                      ; -----------------------
+0A53                      
+0A53 23                   		inc	hl			;Probably not making PSG instruments
+0A54 23                   		inc	hl
+0A55                      
+0A55                      ; -----------------------
+0A55                      ; Get the
+0A55                      ; PatternEnd/PatternLoop
+0A55                      ; numbers
+0A55                      ; -----------------------
+0A55                      
+0A55 7E                   		ld	a,(hl)
+0A56 23                   		inc	hl
+0A57 DD 77 03             		ld	(ix+PatternEnd),a
+0A5A 7E                   		ld	a,(hl)
+0A5B 23                   		inc	hl
+0A5C DD 77 04             		ld	(ix+PatternLoop),a
+0A5F                      
+0A5F                      ; -----------------------
+0A5F                      ; Setup the channel IDs
+0A5F                      ; -----------------------
+0A5F                      
+0A5F 06 04                		ld	b,MaxChannels
+0A61                      @SetId:
+0A61 3E 01                		ld	a,1
+0A63 FD 77 00             		ld	(iy+Chn_Type),a
+0A66 7E                   		ld	a,(hl)
+0A67 23                   		inc	hl
+0A68 FD 77 01             		ld	(iy+Chn_ID),a
+0A6B AF                   		xor	a
+0A6C FD 77 05             		ld	(iy+(Chn_Freq+1)),a
+0A6F FD 77 04             		ld	(iy+Chn_Freq),a
+0A72                      		
+0A72 11 10 00             		ld	de,sizeof_Chn
+0A75 FD 19                		add 	iy,de
+0A77 10 E8                		djnz	@SetId
+0A79                      
+0A79                      ; -----------------------
+0A79                      ; Master volumes
+0A79                      ; -----------------------
+0A79                      
+0A79                      		; (Removed in this driver)
+0A79                      		
+0A79                      ; -----------------------
+0A79                      ; last steps
+0A79                      ; -----------------------
+0A79                       
+0A79 DD 74 0A              		ld	(ix+(SongStart+1)),h
+0A7C DD 75 09              		ld	(ix+SongStart),l
+0A7F 7E                    		ld	a,(hl)
+0A80 23                    		inc	hl
+0A81 DD 77 05              		ld	(ix+PattSize),a
+0A84 7E                    		ld	a,(hl)
+0A85 23                    		inc	hl
+0A86 DD 77 06              		ld	(ix+(PattSize+1)),a	
+0A89 AF                    		xor	a
+0A8A DD 77 08              		ld	(ix+(PattRead+1)),a
+0A8D DD 77 07              		ld	(ix+PattRead),a
+0A90 23                    		inc	hl
+0A91 23                     		inc	hl
+0A92 23                     		inc	hl
+0A93 23                    		inc	hl
+0A94 23                     		inc	hl
+0A95 23                     		inc	hl
+0A96 DD 74 0C              		ld	(ix+(SongRead+1)),h
+0A99 DD 75 0B              		ld	(ix+SongRead),l
+0A9C                       		
+0A9C                      ;  		ld	a,1
+0A9C                      ;  		ld	(ix+CurrPattern),a
+0A9C C9                   		ret
+0A9D                      		
+0A9D                      ; -----------------------
+0A9D                      ; Fix stuff to BGM
+0A9D                      ; -----------------------
+0A9D                      
+0A9D                      SMEG_Load_FixBgm:
+0A9D                      ; 		lea	(RAM_SMEG_Chnls_BGM),a5
+0A9D                      ; 		moveq	#(MaxChannels)-1,d4
+0A9D                      ; @SetId:
+0A9D                      ; 		move.b	#$80,Chn_Panning(a5)
+0A9D                      ; 
+0A9D                      ; 		tst.b	Chn_ID(a5)
+0A9D                      ; 		bmi.s	@NotFM
+0A9D                      ; 		cmp.b	#PCM_1,Chn_ID(a5)
+0A9D                      ; 		bge.s	@NotFM
+0A9D                      ; 
+0A9D                      ; 		clr.b	Chn_FM_Key(a5)
+0A9D                      ; 		move.b	#%00001111,Chn_FM_Key(a5)
+0A9D                      ; 		move.b	#$C0,Chn_Panning(a5)
+0A9D                      ; 		bsr	SMEG_FM_SetPan
+0A9D                      ; 
+0A9D                      ; @NotFM:
+0A9D                      ; 		adda 	#sizeof_Chn,a5
+0A9D                      ; 		dbf	d4,@SetId
+0A9D C9                   		ret
+0A9E                      		
+0A9E                      ; ================================================================
+0A9E                      ; -------------------------------------------
+0A9E                      ; Run
+0A9E                      ; -------------------------------------------
+0A9E                      
+0A9E                      SMEG_Upd:
+0A9E DD 21 00 C1          		ld	ix,RAM_SMEG_Buffer
+0AA2 DD 7E 00             		ld	a,(ix)
+0AA5 CB C7                		set 	bitPriority,a
+0AA7 DD 77 00             		ld	(ix),a
+0AAA CD 00 00             		call	@ReadRow
+0AAD                      		
+0AAD DD 21 48 C1          		ld	ix,RAM_SMEG_SfxBuff
+0AB1 DD 7E 00             		ld	a,(ix)
+0AB4 CB 87                		res 	bitPriority,a
+0AB6 DD 77 00             		ld	(ix),a
+0AB9 CB 4F                		bit 	bitSfxOn,a
+0ABB CA 00 00             		jp	z,@Wait
+0ABE CD 00 00             		call	@ReadRow
+0AC1                      		
+0AC1                      @Wait:
+0AC1 C9                   		ret
+0AC2                      
+0AC2                      ; -------------------------------------------
+0AC2                      ; Read row
+0AC2                      ; -------------------------------------------
+0AC2                      
+0AC2                      @ReadRow:
+0AC2 DD 7E 00             		ld	a,(ix)
+0AC5 CB 57                		bit 	bitDisabled,a
+0AC7 C2 C1 0A             		jp	nz,@Wait
+0ACA                      		
+0ACA DD 35 0D             		dec 	(ix+TicksRead)
+0ACD DD 7E 0D             		ld	a,(ix+TicksRead)
+0AD0 F2 C1 0A             		jp	p,@Wait
+0AD3 DD 7E 0E             		ld	a,(ix+TicksSet)
+0AD6 DD 77 0D             		ld	(ix+TicksRead),a
+0AD9                      		
+0AD9 DD 56 0C             		ld	d,(ix+(SongRead+1))
+0ADC DD 5E 0B             		ld	e,(ix+SongRead)	
+0ADF                      	
+0ADF                      ; --------------------------------
+0ADF                      ; New pattern
+0ADF                      ; --------------------------------
+0ADF                      
+0ADF                      @Next:
+0ADF DD 46 08             		ld	b,(ix+(PattRead+1))
+0AE2 DD 7E 06             		ld	a,(ix+(PattSize+1))
+0AE5 B8                   		cp	b
+0AE6 C2 00 00             		jp	nz,@NoNextRow
+0AE9 DD 46 07             		ld	b,(ix+PattRead)
+0AEC DD 7E 05             		ld	a,(ix+PattSize)
+0AEF 3D                   		dec 	a
+0AF0 B8                   		cp	b
+0AF1 D2 00 00             		jp	nc,@NoNextRow
+0AF4                      		
+0AF4 AF                   		xor	a
+0AF5 DD 77 08             		ld	(ix+(PattRead+1)),a
+0AF8 DD 77 07             		ld	(ix+PattRead),a
+0AFB                      		
+0AFB DD 7E 03               		ld	a,(ix+PatternEnd)
+0AFE DD 46 02               		ld	b,(ix+CurrPattern)
+0B01 B8                      		cp	b
+0B02 C2 00 00               		jp	nz,@NotEnd
+0B05                       		
+0B05                       		; Restart
+0B05 DD 66 0A              		ld	h,(ix+(SongStart+1))
+0B08 DD 6E 09              		ld	l,(ix+(SongStart))
+0B0B 7E                    		ld	a,(hl)
+0B0C 23                    		inc	hl
+0B0D DD 77 05              		ld	(ix+(PattSize)),a
+0B10 7E                    		ld	a,(hl)
+0B11 23                    		inc	hl
+0B12 DD 77 06              		ld	(ix+(PattSize+1)),a
+0B15 23                    		inc	hl
+0B16 23                     		inc	hl
+0B17 23                     		inc	hl
+0B18 23                    		inc	hl
+0B19 23                     		inc	hl
+0B1A 23                     		inc	hl
+0B1B DD 74 0C               		ld	(ix+(SongRead+1)),h
+0B1E DD 75 0B               		ld	(ix+SongRead),l
+0B21                      		
+0B21 AF                   		xor	a
+0B22 DD 77 08             		ld	(ix+(PattRead+1)),a
+0B25 DD 77 07             		ld	(ix+PattRead),a
+0B28 DD 7E 04              		ld	a,(ix+PatternLoop)
+0B2B DD 77 02             		ld	(ix+CurrPattern),a
+0B2E                      
+0B2E AF                   		xor	a
+0B2F DD 77 0D             		ld	(ix+TicksRead),a
+0B32 DD 77 02             		ld	(ix+CurrPattern),a
+0B35 18 8B                 		jr 	@ReadRow
+0B37                      
+0B37                      ; --------------------------------
+0B37                      
+0B37                      @NotEnd:
+0B37 DD 7E 02              		ld	a,(ix+CurrPattern)
+0B3A 3C                    		inc	a
+0B3B DD 77 02              		ld	(ix+CurrPattern),a
+0B3E                       		
+0B3E DD 7E 02              		ld	a,(ix+CurrPattern)
+0B41 DD 46 04              		ld	b,(ix+PatternLoop)
+0B44 B8                    		cp	b
+0B45 C2 00 00              		jp	nz,@DontSaveLoop
+0B48 DD 72 0A              		ld	(ix+(SongStart+1)),d
+0B4B DD 73 09              		ld	(ix+(SongStart)),e
+0B4E                      		
+0B4E                      @DontSaveLoop:	
+0B4E 1A                    		ld	a,(de)
+0B4F 13                    		inc	de
+0B50 DD 77 05              		ld	(ix+PattSize),a
+0B53 1A                    		ld	a,(de)
+0B54 13                    		inc	de
+0B55 DD 77 06              		ld	(ix+(PattSize+1)),a	
+0B58 AF                    		xor	a
+0B59 DD 77 08              		ld	(ix+(PattRead+1)),a
+0B5C DD 77 07              		ld	(ix+PattRead),a
+0B5F 13                   		inc	de
+0B60 13                   		inc	de
+0B61 13                   		inc	de
+0B62 13                   		inc	de
+0B63 13                   		inc	de
+0B64 13                   		inc	de
+0B65                      		
+0B65                      ; --------------------------------
+0B65                      ; Current pattern
+0B65                      ; --------------------------------
+0B65                       
+0B65                      @NoNextRow:
+0B65 1A                   		ld	a,(de)
+0B66 13                    		inc	de
+0B67 DD 77 13              		ld	(ix+CurrChan),a
+0B6A FE 00                 		cp	0
+0B6C C2 00 00             		jp	nz,@ValidNote
+0B6F                      		
+0B6F DD 46 08             		ld	b,(ix+(PattRead+1))
+0B72 DD 4E 07             		ld	c,(ix+(PattRead))
+0B75 03                   		inc	bc
+0B76 DD 70 08             		ld	(ix+(PattRead+1)),b
+0B79 DD 71 07             		ld	(ix+(PattRead)),c
+0B7C                      		
+0B7C DD 72 0C             		ld	(ix+(SongRead+1)),d
+0B7F DD 73 0B             		ld	(ix+(SongRead)),e
+0B82 C9                   		ret
+0B83                      		
+0B83                      @ValidNote:
+0B83 DD 7E 13              		ld	a,(ix+CurrChan)
+0B86 CB 7F                 		bit 	7,a
+0B88 CA 00 00             		jp	z,@Not80
+0B8B                      		
+0B8B DD 46 08             		ld	b,(ix+(PattRead+1))
+0B8E DD 4E 07             		ld	c,(ix+(PattRead))
+0B91 03                   		inc	bc
+0B92 DD 70 08             		ld	(ix+(PattRead+1)),b
+0B95 DD 71 07             		ld	(ix+(PattRead)),c
+0B98 CB BF                		res 	7,a
+0B9A DD 77 13             		ld	(ix+CurrChan),a
+0B9D                      
+0B9D 1A                    		ld	a,(de)
+0B9E 13                    		inc	de
+0B9F DD 77 14              		ld	(ix+CurrChanType),a
+0BA2                      		
+0BA2                      @Not80:
+0BA2 DD 46 08             		ld	b,(ix+(PattRead+1))
+0BA5 DD 4E 07             		ld	c,(ix+(PattRead))
+0BA8 03                   		inc	bc
+0BA9 DD 70 08             		ld	(ix+(PattRead+1)),b
+0BAC DD 71 07             		ld	(ix+(PattRead)),c
+0BAF                      		
+0BAF 97                   		sub 	a
+0BB0                      		;channel_on flags goes here
+0BB0                      		
+0BB0 FD 21 90 C1          		ld	iy,RAM_SMEG_Chnls_BGM
+0BB4 DD 7E 00             		ld	a,(ix)
+0BB7 CB 47                		bit 	bitPriority,a
+0BB9 C2 00 00             		jp	nz,@BgmPrio
+0BBC FD 21 D0 C1          		ld	iy,RAM_SMEG_Chnls_SFX		
+0BC0                      @BgmPrio:
+0BC0 DD 7E 13             		ld	a,(ix+CurrChan)
+0BC3 FE 01                		cp	1
+0BC5 CA 00 00             		jp	z,@First
+0BC8 3D                   		dec 	a
+0BC9                      @NextChn:
+0BC9 01 10 00              		ld	bc,sizeof_Chn
+0BCC FD 09                   		add 	iy,bc
+0BCE 3D                      		dec	a
+0BCF C2 C9 0B                		jp	nz,@NextChn
+0BD2                      @First:
+0BD2                      
+0BD2 DD 7E 14              		ld	a,(ix+CurrChanType)
+0BD5 FE 00                 		cp	0
+0BD7 CA 00 00             		jp	z,@NotRest
+0BDA DD 7E 14              		ld	a,(ix+CurrChanType)
+0BDD FD 77 00             		ld	(iy+Chn_Type),a
+0BE0                      
+0BE0                      @NotRest:
+0BE0                      
+0BE0                      ; -------------
+0BE0                      ; Note
+0BE0                      ; -------------
+0BE0                      
+0BE0 FD 7E 00             		ld	a,(iy+Chn_Type)
+0BE3 CB 67                		bit 	bitSameNote,a
+0BE5 C2 00 00             		jp	nz,@PlayOnly
+0BE8 CB 47                		bit 	bitNote,a
+0BEA CA 00 00             		jp	z,@NoNote
+0BED                      
+0BED 1A                   		ld	a,(de)
+0BEE 13                   		inc 	de
+0BEF FD 77 0B             		ld	(iy+Chn_Note),a
+0BF2 DD 46 08             		ld	b,(ix+(PattRead+1))
+0BF5 DD 4E 07             		ld	c,(ix+(PattRead))
+0BF8 03                   		inc	bc
+0BF9 DD 70 08             		ld	(ix+(PattRead+1)),b
+0BFC DD 71 07             		ld	(ix+(PattRead)),c
+0BFF                      
+0BFF                      @PlayOnly:
+0BFF CD 00 00              		call	SMEG_ChannelRest
+0C02                      		
+0C02                      ; -------------
+0C02                      ; Instrument
+0C02                      ; -------------
+0C02                      
+0C02                      @NoNote:
+0C02 FD 7E 00             		ld	a,(iy+Chn_Type)
+0C05 CB 6F                 		bit 	bitSameInst,a
+0C07 C2 00 00              		jp	nz,@SameInst
+0C0A CB 4F                		bit 	bitInst,a
+0C0C CA 00 00             		jp	z,@NoInst
+0C0F                      		
+0C0F FD 34 0A             		inc	(iy+Chn_DefVol)
+0C12                      		
+0C12 1A                   		ld	a,(de)
+0C13 13                   		inc 	de
+0C14 FD 77 02             		ld	(iy+Chn_Inst),a
+0C17 DD 46 08             		ld	b,(ix+(PattRead+1))
+0C1A DD 4E 07             		ld	c,(ix+(PattRead))
+0C1D 03                   		inc	bc
+0C1E DD 70 08             		ld	(ix+(PattRead+1)),b
+0C21 DD 71 07             		ld	(ix+(PattRead)),c
+0C24                      
+0C24                      ; 		bsr	SMEG_SetVoice
+0C24                      @SameInst:
+0C24                      
+0C24                      ; -------------
+0C24                      ; Volume
+0C24                      ; -------------
+0C24                      
+0C24                      @NoInst:
+0C24 FD 7E 00             		ld	a,(iy+Chn_Type)
+0C27 CB 77                		bit 	bitSameVol,a
+0C29 C2 00 00             		jp	nz,@SameVol
+0C2C CB 57                		bit 	bitVolume,a
+0C2E CA 00 00             		jp	z,@NoVolume
+0C31                       
+0C31 AF                    		xor	a
+0C32 FD 77 09             		ld	(iy+(Chn_Portam+1)),a
+0C35 FD 77 08             		ld	(iy+Chn_Portam),a
+0C38 FD 77 07             		ld	(iy+(Chn_Effect+1)),a
+0C3B FD 77 06             		ld	(iy+Chn_Effect),a
+0C3E 1A                   		ld	a,(de)
+0C3F 13                   		inc 	de
+0C40 DD 46 08             		ld	b,(ix+(PattRead+1))
+0C43 DD 4E 07             		ld	c,(ix+(PattRead))
+0C46 03                   		inc	bc
+0C47 DD 70 08             		ld	(ix+(PattRead+1)),b
+0C4A DD 71 07             		ld	(ix+(PattRead)),c
+0C4D                      		
+0C4D D6 40                  		sub 	64
+0C4F ED 44                  		neg 	a
+0C51 FD 77 03             		ld	(iy+Chn_Vol),a
+0C54                      		
+0C54                      @SameVol:
+0C54 CD 00 00               		call	@ChnVolume
+0C57                      
+0C57                      ; -------------
+0C57                      ; Effect
+0C57                      ; -------------
+0C57                       
+0C57                      @NoVolume:
+0C57 FD 7E 00             		ld	a,(iy+Chn_Type)
+0C5A CB 7F                		bit 	bitSameEffect,a
+0C5C C2 00 00             		jp	nz,@SameEffect
+0C5F CB 5F                		bit 	bitEffect,a
+0C61 CA 00 00             		jp	z,@NoEffect
+0C64                      
+0C64 1A                   		ld	a,(de)
+0C65 FD 77 07             		ld	(iy+(Chn_Effect+1)),a
+0C68 13                   		inc 	de
+0C69 DD 46 08             		ld	b,(ix+(PattRead+1))
+0C6C DD 4E 07             		ld	c,(ix+(PattRead))
+0C6F 03                   		inc	bc
+0C70 DD 70 08             		ld	(ix+(PattRead+1)),b
+0C73 DD 71 07             		ld	(ix+(PattRead)),c
+0C76                      		
+0C76 1A                   		ld	a,(de)
+0C77 FD 77 06             		ld	(iy+Chn_Effect),a
+0C7A 13                   		inc 	de
+0C7B DD 46 08             		ld	b,(ix+(PattRead+1))
+0C7E DD 4E 07             		ld	c,(ix+(PattRead))
+0C81 03                   		inc	bc
+0C82 DD 70 08             		ld	(ix+(PattRead+1)),b
+0C85 DD 71 07             		ld	(ix+(PattRead)),c
+0C88                      
+0C88                      @SameEffect:
+0C88 CD 00 00             		call	@ChannelEffects
+0C8B                       
+0C8B                      ; --------------
+0C8B                      ; Play the note
+0C8B                      ; --------------
+0C8B                      ; 
+0C8B                      @NoEffect:
+0C8B FD 7E 00             		ld	a,(iy+Chn_Type)
+0C8E CB 67                		bit 	bitSameNote,a
+0C90 C2 00 00             		jp	nz,@SameNote
+0C93 CB 47                		bit 	bitNote,a
+0C95 CA DF 0A             		jp	z,@Next
+0C98                      		
+0C98                      @SameNote:
+0C98 CD 00 00              		call	@ChannelPlay	
+0C9B C3 DF 0A              		jp	@Next
+0C9E                      
+0C9E                      ; ================================================================
+0C9E                      ; -------------------------------
+0C9E                      ; Set Volume
+0C9E                      ; -------------------------------
+0C9E                      
+0C9E                      @ChnVolume:
+0C9E FD 7E 01             		ld	a,(iy+Chn_ID)
+0CA1 FE FF                		cp	0FFh
+0CA3 CA 00 00             		jp	z,@Disabled
+0CA6                      		
+0CA6 0E 00                		ld	c,00h
+0CA8 FD 7E 03               		ld	a,(iy+Chn_Vol)
+0CAB CA 00 00                 		jp	z,@Full
+0CAE D6 40                    		sub 	64
+0CB0 CB 2F                    		sra 	a
+0CB2 CB 2F                    		sra	a
+0CB4                      @Full:
+0CB4 E6 0F                 		and 	00001111b
+0CB6 47                    		ld	b,a
+0CB7 FD 7E 01              		ld	a,(iy+Chn_ID)
+0CBA E6 E0                 		and	11100000b
+0CBC CB E7                 		set 	4,a
+0CBE B0                    		or	b
+0CBF D3 7F                 		out	(7Fh),a
+0CC1 C9                   		ret 
+0CC2                      		
+0CC2                      ; -------------------------------
+0CC2                      ; Set Freq
+0CC2                      ; -------------------------------
+0CC2                      
+0CC2                      @NoteFreq:	
+0CC2 FD 7E 0B             		ld	a,(iy+Chn_Note)
+0CC5 FE FF                		cp	0FFh
+0CC7 CA 00 00             		jp	z,@ResetFreq
+0CCA FE FE                		cp	0FEh
+0CCC CA 00 00             		jp	z,@ResetFreq
+0CCF                      		
+0CCF FD 7E 01             		ld	a,(iy+Chn_ID)
+0CD2 FE E0                		cp	NOISE
+0CD4 C2 00 00             		jp	nz,@NotNoise
+0CD7                      		
+0CD7 AF                   		xor	a
+0CD8 FD 77 05             		ld	(iy+(Chn_Freq+1)),a
+0CDB 3C                   		inc	a
+0CDC FD 77 04             		ld	(iy+Chn_Freq),a
+0CDF                      
+0CDF DD 7E 01             		ld	a,(ix+DrvSettings)
+0CE2 CB 57                		bit	bitTone3,a
+0CE4 CA 00 00             		jp	z,@Disabled
+0CE7                      @NotNoise:
+0CE7 01 00 00             		ld	bc,0
+0CEA FD 4E 0B             		ld	c,(iy+Chn_Note)
+0CED CB 21                		sla	c
+0CEF E5                   		push	hl
+0CF0 21 00 00             		ld	hl,@Notes_PSG
+0CF3 FD 7E 01              		ld	a,(iy+Chn_ID)
+0CF6 FE E0                  		cp	NOISE
+0CF8 C2 00 00               		jp	nz,@NotNoiseFix
+0CFB 21 00 00             		ld	hl,@Notes_PSG+(32*2)		
+0CFE                      @NotNoiseFix:
+0CFE 09                   		add 	hl,bc
+0CFF 7E                   		ld	a,(hl)
+0D00 FD 77 04             		ld	(iy+(Chn_Freq)),a
+0D03 23                   		inc	hl
+0D04 7E                   		ld	a,(hl)
+0D05 FD 77 05             		ld	(iy+Chn_Freq+1),a
+0D08 E1                   		pop	hl
+0D09 C9                   		ret 
+0D0A                      
+0D0A                      @ResetFreq:
+0D0A AF                   		xor	a
+0D0B FD 77 05             		ld	(iy+(Chn_Freq+1)),a
+0D0E FD 77 04             		ld	(iy+Chn_Freq),a
+0D11                      		
+0D11                      @Disabled:
+0D11 C9                    		ret
+0D12                      		
+0D12                      ; -------------------------------
+0D12                      ; Channel play
+0D12                      ; -------------------------------
+0D12                      
+0D12                      @ChannelPlay:
+0D12 FD 7E 01             		ld	a,(iy+Chn_ID)
+0D15 FE FF                		cp	0FFh
+0D17 CA 11 0D             		jp	z,@Disabled
+0D1A                      		
+0D1A                      		;Portametro later
+0D1A CD C2 0C             		call	@NoteFreq
+0D1D                      			
+0D1D FD 7E 05             		ld	a,(iy+(Chn_Freq+1))
+0D20 FD 46 04             		ld	b,(iy+(Chn_Freq))
+0D23 B0                   		or	b
+0D24 CA 00 00              		jp	z,SMEG_ChannelRest
+0D27                      		
+0D27 FD 7E 01             		ld	a,(iy+Chn_ID)
+0D2A FE E0                		cp	NOISE
+0D2C CA 00 00             		jp	z,@PlayNoise
+0D2F                      		
+0D2F FE C0                		cp	PSG_3
+0D31 C2 00 00             		jp	nz,@NotPsg3
+0D34 DD 7E 01             		ld	a,(ix+DrvSettings)
+0D37 CB 57                		bit	bitTone3,a
+0D39 CA 00 00             		jp	z,@NotPsg3
+0D3C                      		
+0D3C 3E DF                		ld	a,0DFh
+0D3E D3 7F                		out	(7Fh),a
+0D40 C9                   		ret 
+0D41                      
+0D41                      @NotPsg3:
+0D41 FD 7E 01              		ld	a,(iy+Chn_ID)
+0D44 4F                    		ld	c,a
+0D45 C3 00 00              		jp	@SetFreq
+0D48                      		
+0D48                      ; ------------------------------------
+0D48                      
+0D48                      @PlayNoise:
+0D48 DD 7E 01             		ld	a,(ix+DrvSettings)
+0D4B CB 57                		bit 	bitTone3,a
+0D4D CA 11 0D             		jp	z,@Disabled
+0D50 0E C0                		ld	c,11000000b
+0D52                      @SetFreq:
+0D52 FD 7E 04              		ld	a,(iy+(Chn_Freq))
+0D55 E6 0F                 		and 	00001111b
+0D57 47                    		ld	b,a
+0D58 79                    		ld	a,c
+0D59 E6 E0                 		and	11100000b
+0D5B B0                    		or	b
+0D5C D3 7F                		out	(7Fh),a
+0D5E FD 7E 04              		ld	a,(iy+(Chn_Freq))
+0D61 CB 2F                 		sra	a
+0D63 CB 2F                 		sra	a
+0D65 CB 2F                 		sra	a
+0D67 CB 2F                 		sra	a
+0D69 E6 0F                 		and 	00001111b
+0D6B 47                    		ld	b,a
+0D6C FD 7E 05              		ld	a,(iy+(Chn_Freq+1))
+0D6F CB 27                  		sla	a
+0D71 CB 27                 		sla	a
+0D73 CB 27                 		sla	a
+0D75 CB 27                 		sla	a
+0D77 E6 30                 		and 	00110000b
+0D79 B0                    		or	b
+0D7A D3 7F                 		out	(7Fh),a
+0D7C C9                   		ret
+0D7D                      		
+0D7D                      ; -------------------------------
+0D7D                      
+0D7D                      @Notes_PSG:
+0D7D 00 00                		dw 0		;x-0
+0D7F 00 00                		dw 0
+0D81 00 00                		dw 0
+0D83 00 00                		dw 0
+0D85 00 00                		dw 0
+0D87 00 00                		dw 0
+0D89 00 00                		dw 0
+0D8B 00 00                		dw 0
+0D8D 00 00                		dw 0
+0D8F 00 00                		dw 0
+0D91 00 00                		dw 0
+0D93 00 00                		dw 0
+0D95 00 00                		dw 0
+0D97 00 00                		dw 0
+0D99 00 00                		dw 0
+0D9B 00 00                		dw 0
+0D9D 00 00                		dw 0
+0D9F 00 00                		dw 0
+0DA1                      
+0DA1 00 00                		dw 0		;x-1
+0DA3 00 00                		dw 0
+0DA5 00 00                		dw 0
+0DA7 00 00                		dw 0
+0DA9 00 00                		dw 0
+0DAB 00 00                		dw 0
+0DAD 00 00                		dw 0
+0DAF 00 00                		dw 0
+0DB1 00 00                		dw 0
+0DB3 00 00                		dw 0
+0DB5 00 00                		dw 0
+0DB7 00 00                		dw 0
+0DB9 00 00                		dw 0
+0DBB 00 00                		dw 0
+0DBD 00 00                		dw 0
+0DBF 00 00                		dw 0
+0DC1 00 00                		dw 0
+0DC3 00 00                		dw 0
+0DC5                      
+0DC5 00 00                		dw 0
+0DC7 00 00                		dw 0
+0DC9 00 00                		dw 0
+0DCB 00 00                		dw 0
+0DCD 00 00                		dw 0
+0DCF 00 00                		dw 0
+0DD1 00 00                		dw 0
+0DD3 00 00                		dw 0
+0DD5 00 00                		dw 0
+0DD7                      
+0DD7 F8 03                		dw 3F8h
+0DD9 BF 03                                dw 3BFh
+0DDB 89 03                                dw 389h
+0DDD 56 03                		dw 356h
+0DDF 26 03                                dw 326h
+0DE1 F9 02                                dw 2F9h
+0DE3 CE 02                                dw 2CEh
+0DE5 A5 02                                dw 2A5h
+0DE7 80 02                                dw 280h
+0DE9 5C 02                                dw 25Ch
+0DEB 3A 02                                dw 23Ah
+0DED 1A 02                                dw 21Ah
+0DEF FB 01                		dw 1FBh
+0DF1 DF 01                                dw 1DFh
+0DF3 C4 01                                dw 1C4h
+0DF5 AB 01                                dw 1ABh
+0DF7 93 01                                dw 193h
+0DF9 7D 01                                dw 17Dh
+0DFB 67 01                                dw 167h
+0DFD 53 01                                dw 153h
+0DFF 40 01                                dw 140h
+0E01 2E 01                		dw 12Eh
+0E03 1D 01                                dw 11Dh
+0E05 0D 01                                dw 10Dh
+0E07 FE 00                                dw 0FEh
+0E09 EF 00                                dw 0EFh
+0E0B E2 00                                dw 0E2h
+0E0D D6 00                                dw 0D6h
+0E0F C9 00                                dw 0C9h
+0E11 BE 00                                dw 0BEh
+0E13 B4 00                                dw 0B4h
+0E15 A9 00                		dw 0A9h
+0E17 A0 00                                dw 0A0h
+0E19 97 00                                dw 97h
+0E1B 8F 00                                dw 8Fh
+0E1D 87 00                                dw 87h
+0E1F 7F 00                                dw 7Fh
+0E21 78 00                                dw 78h
+0E23 71 00                                dw 71h
+0E25 6B 00                                dw 6Bh
+0E27 65 00                                dw 65h
+0E29 5F 00                		dw 5Fh
+0E2B 5A 00                                dw 5Ah
+0E2D 55 00                                dw 55h
+0E2F 50 00                                dw 50h
+0E31 4B 00                                dw 4Bh
+0E33 47 00                                dw 47h
+0E35 43 00                                dw 43h
+0E37 40 00                                dw 40h
+0E39 3C 00                                dw 3Ch
+0E3B 39 00                                dw 39h
+0E3D 36 00                		dw 36h
+0E3F 33 00                                dw 33h
+0E41 30 00                                dw 30h
+0E43 2D 00                                dw 2Dh
+0E45 2B 00                                dw 2Bh
+0E47 28 00                                dw 28h
+0E49 26 00                                dw 26h
+0E4B 24 00                                dw 24h
+0E4D 22 00                                dw 22h
+0E4F 20 00                                dw 20h
+0E51 1F 00                		dw 1Fh
+0E53 1D 00                                dw 1Dh
+0E55 1B 00                                dw 1Bh
+0E57 1A 00                                dw 1Ah
+0E59 18 00                                dw 18h
+0E5B 17 00                                dw 17h
+0E5D 16 00                                dw 16h
+0E5F 15 00                                dw 15h
+0E61 13 00                                dw 13h
+0E63 12 00                                dw 12h
+0E65 11 00                		dw 11h
+0E67                      		
+0E67                      ; ================================================================
+0E67                      ; -------------------------------
+0E67                      ; Channel effect
+0E67                      ; -------------------------------
+0E67                      
+0E67                      @ChannelEffects:
+0E67 01 00 00             		ld	bc,0
+0E6A FD 4E 07             		ld	c,(iy+(Chn_Effect+1))
+0E6D CB 21                		sla	c
+0E6F 21 00 00             		ld	hl,@EffectList
+0E72 09                   		add 	hl,bc
+0E73 E9                   		jp	(hl)
+0E74                      
+0E74                      ; -------------------------------
+0E74                      
+0E74                      @EffectList:
+0E74 18 00                		jr	@Null		;(Nothing)
+0E76 18 00                		jr	@Null		;A	
+0E78 18 00                		jr	@Null
+0E7A 18 00                		jr	@Null
+0E7C 18 00                		jr	@Null
+0E7E 18 00                		jr	@Null
+0E80 18 00                		jr	@Null
+0E82 18 00                		jr	@Null
+0E84 18 00                		jr	@Null
+0E86 18 00                		jr	@Null
+0E88 18 00                		jr	@Null
+0E8A 18 00                		jr	@Null
+0E8C 18 00                		jr	@Null
+0E8E 18 00                		jr	@Null
+0E90 18 00                		jr	@Null
+0E92 18 00                		jr	@Null
+0E94 18 00                		jr	@Null
+0E96 18 00                		jr	@Null
+0E98 18 00                		jr	@Null
+0E9A 18 00                		jr	@Null
+0E9C 18 00                		jr	@Null
+0E9E 18 00                		jr	@Null
+0EA0 18 00                		jr	@Null
+0EA2 18 00                		jr	@Null
+0EA4 18 00                		jr	@Flag_X
+0EA6 18 00                		jr	@Null
+0EA8 18 00                		jr	@Flag_Z
+0EAA                      
+0EAA                      ; -------------------------------
+0EAA                      ; Null effect
+0EAA                      ; -------------------------------
+0EAA                      
+0EAA                      @Null:
+0EAA C9                   		ret
+0EAB                      		
+0EAB                      ; -------------------------------
+0EAB                      ; Flag X - Stereo
+0EAB                      ; -------------------------------
+0EAB                      
+0EAB                      @Flag_X:
+0EAB C9                   		ret
+0EAC                      		
+0EAC                      ; ======================================================
+0EAC                      ; -------------------------------
+0EAC                      ; Flag Z
+0EAC                      ; -------------------------------
+0EAC                      
+0EAC                      @Flag_Z:	
+0EAC 01 00 00              		ld	bc,0
+0EAF FD 7E 06              		ld	a,(iy+(Chn_Effect))
+0EB2 CB 2F                 		sra	a
+0EB4 CB 2F                 		sra	a
+0EB6 CB 2F                 		sra	a
+0EB8 4F                    		ld	c,a
+0EB9 21 00 00              		ld	hl,@HashList
+0EBC 09                    		add 	hl,bc
+0EBD E9                   		jp	(hl)
+0EBE                      
+0EBE                      @HashList:
+0EBE 18 EA                		jr	@Null
+0EC0 18 E8                		jr	@Null
+0EC2 18 E6                		jr	@Null
+0EC4 18 E4                		jr	@Null
+0EC6 18 00                		jr	@PSG
+0EC8 18 E0                		jr	@Null
+0ECA 18 DE                		jr	@Null
+0ECC 18 DC                		jr	@Null
+0ECE 18 DA                		jr	@Null
+0ED0 18 D8                		jr	@Null
+0ED2 18 D6                		jr	@Null
+0ED4 18 D4                		jr	@Null
+0ED6 18 D2                		jr	@Null
+0ED8 18 D0                		jr	@Null
+0EDA 18 CE                		jr	@Null
+0EDC 18 CC                		jr	@Null
+0EDE                      		
+0EDE                      ; -------------------------------
+0EDE                      
+0EDE                      @PSG:
+0EDE DD 46 01             		ld	b,(ix+DrvSettings)
+0EE1 CB 90                  		res	bitTone3,b
+0EE3 FD 7E 06                		ld	a,(iy+(Chn_Effect))
+0EE6 E6 07                   		and	111b
+0EE8 FE 03                   		cp	3
+0EEA CA 00 00                		jp	z,@SetIt3
+0EED FE 07                   		cp	7
+0EEF CA 00 00                 		jp	z,@SetIt3
+0EF2 18 00                    		jr	@Tone3
+0EF4                      @SetIt3:
+0EF4 CB D0                   		set 	bitTone3,b
+0EF6                      @Tone3:
+0EF6 DD 70 01             		ld	(ix+DrvSettings),b
+0EF9                      ; 		bit 	bitPriority,b
+0EF9                      ;  		jp	z,@IsPsg
+0EF9                      ;  		
+0EF9                      ;  		ld	a,(RAM_SMEG_Buffer+DrvSettings)
+0EF9                      ;  		ld	(RAM_SMEG_Buffer+DrvSettingsBGM),a
+0EF9                      ;  		ld	a,(iy+(Chn_Effect))
+0EF9                      ;  		and 	00000111b
+0EF9                      ;  		ld	(RAM_SMEG_Buffer+PsgLast),a
+0EF9                      ; 		
+0EF9                      ; @IsPsg:
+0EF9 FD 7E 06             		ld	a,(iy+(Chn_Effect))
+0EFC E6 07                		and	111b
+0EFE 47                   		ld	b,a
+0EFF 3E E0                		ld	a,0E0h
+0F01 B0                   		or	b
+0F02 D3 7F                		out	(7Fh),a
+0F04 C9                   		ret	
+0F05                      		
+0F05                      ; ================================================================
+0F05                      ; -------------------------------
+0F05                      ; Mute/Rest channel
+0F05                      ; -------------------------------
+0F05                      
+0F05                      SMEG_ChannelRest:
+0F05 FD 7E 01             		ld	a,(iy+Chn_ID)
+0F08 FE FF                		cp	0FFh
+0F0A CA 00 00             		jp	z,@Return
+0F0D                      		
+0F0D FD 7E 01             		ld	a,(iy+Chn_ID)
+0F10 E6 E0                		and 	11100000b
+0F12 47                   		ld	b,a
+0F13 3E 1F                		ld	a,00011111b
+0F15 B0                   		or	b
+0F16 D3 7F                		out	(7Fh),a
+0F18                      @Return:
+0F18 C9                   		ret
+0F19                      		
+0F19                      ; ================================================================
+0F19                      ; -------------------------------
+0F19                      ; Play PCM sample
+0F19                      ; -------------------------------
+0F19                      
+0F19                      PlayPCM:
+0F19                      ; 		ld	h,(BANK_WAVE>>14)&0FFh
+0F19                      ;  		ld	a,h
+0F19                      ;  		ld      (0FFFEh),a
+0F19                      ;  		ld      l,06h
+0F19                      ;  		ld      de,4000h
+0F19                       	
+0F19                      ;  		if MERCURY
+0F19                      ;  		ld	c,01100011b
+0F19                      ;  		ld	a,c
+0F19                      ;  		out	(06h),a
+0F19                      ;  		endif
+0F19 3E 81                 		ld      a,81h			;write $01 to tone channel 0
+0F1B D3 7F                 		out     (7Fh),a
+0F1D AF                    		xor	a
+0F1E D3 7F                 		out     (7Fh),a
+0F20 3E A1                 		ld      a,0A1h			;write $01 to tone channel 1
+0F22 D3 7F                 		out     (7Fh),a
+0F24 AF                    		xor	a
+0F25 D3 7F                 		out     (7Fh),a
+0F27 3E C1                 		ld      a,0C1h			;write $01 to tone channel 2
+0F29 D3 7F                 		out     (7Fh),a
+0F2B AF                    		xor	a
+0F2C D3 7F                 		out     (7Fh),a
+0F2E                       
+0F2E                      @Loop:
+0F2E DB DC                		in      a,(pad)
+0F30 EE FF                		xor     0FFh
+0F32 C2 00 00             		jp	nz,@escape
+0F35 00                    		nop 
+0F36 00                    		nop 
+0F37                       		
+0F37 1A                    		ld      a,(de)
+0F38 0F                    		rrca
+0F39 0F                    		rrca
+0F3A 0F                    		rrca
+0F3B 0F                    		rrca
+0F3C E6 0F                   		and     %00001111
+0F3E F3                   		di
+0F3F F6 90                   		or      90h
+0F41 D3 7F                   		out     (7Fh),a
+0F43 C6 20                   		add	a,20h
+0F45 D3 7F                   		out     (7Fh),a
+0F47 C6 20                   		add	a,20h
+0F49 D3 7F                   		out     (7Fh),a
+0F4B 45                      		ld      b,l
+0F4C 10 FE                   		djnz    *
+0F4E                         		
+0F4E 13                    		inc     de
+0F4F CB 7A                  		bit 	7,d
+0F51 CA 2E 0F               		jp	z,@Loop
+0F54 CB BA                  		res 	7,d
+0F56 CB F2                  		set 	6,d
+0F58 24                     		inc 	h
+0F59 7C                   		ld	a,h
+0F5A 32 FE FF             		ld      (0FFFEh),a
+0F5D FB                      		ei
+0F5E C3 2E 0F              		jp	@Loop
+0F61                       		
+0F61 79                    		ld      a,c
+0F62 B0                    		or      b
+0F63 C2 2E 0F              		jp      nz,@Loop
+0F66                        
+0F66                      @escape:
+0F66                      ;  		pop     hl
+0F66                      ;  		pop     de
+0F66                      ;  		pop     bc
+0F66 C9                    		ret
+0F67                      		
+0F67                      		
+0F67                       		include "sound/data.asm"
+0F67                      ; ================================================================
+0F67                      ; User data
+0F67                      ; ================================================================
+0F67                      
+0F67                      SmegSong_Test:
+0F67 00 00                		dw 0
+0F69 07 00                   		db 7,0
+0F6B 80 A0 C0 E0            		db PSG_1,PSG_2,PSG_3,NOISE
+0F6F                             		incbin "sound/data/music/smb.it",50h+59Ah
+382C                      ;      		incbin "sound/data/music/froggy.it",50h+188Bh
+382C                      ;      		incbin "sound/data/music/froggy.it",50h+188Bh
+382C                       		
+382C                      ; ====================================================================
+382C                      
+382C                      		inform 0,"SLOT 1 Size: %h",*
+382C                          		cnop 0,4000h
+4000                          		
+4000                      ; ====================================================================
+4000                      ; -------------------------------------------------
+4000                      ; Data | SLOT 2
+4000                      ; 
+4000                      ; Header at the end
+4000                      ; -------------------------------------------------
+4000                      
+4000                       		cnop 0,7FF0h
+7FF0 54 4D 52 20 53 45 +   		db "TMR SEGA",0,0		; TMR SEGA + unused
+7FFA 00 00                 		dw 0				; Checksum
+7FFC 00 00                 		db 0,0				; Product code + PCode|Version
+7FFE 00 00                 		db 0,0				; Version|Region code|ROM size
+8000                       		
+8000                      ; ====================================================================
+8000                      ; -------------------------------------------------
+8000                      ; Data | SLOT 3
+8000                      ; 
+8000                      ; TO-DO: This can be used as extra RAM
+8000                      ; -------------------------------------------------
+8000                      
+8000                          		cnop 0,0C000h
+C000                          		
+C000                      ; ====================================================================
+C000                      ; -------------------------------------------------
+C000                      ; DATA BANKS for Slot 2
+C000                      ; -------------------------------------------------
+C000                      
+C000                      BANK_Title:	obj 4000h
+4000                      		include "modes/title/data.asm"
+4000                      ; ====================================================================
+4000                      ; -------------------------------------------------
+4000                      ; DATA | Title Screen
+4000                      ; -------------------------------------------------
+4000                      
+4000                      art_title:	incbin "modes/title/data/art.bin"
+5140 =00000111            art_title_end	equ *-art_title
+5140                      pal_title:	incbin "modes/title/data/pal.bin"
+5160                      map_title:	incbin "modes/title/data/map.bin"
+5160                      map_title:	incbin "modes/title/data/map.bin"
+5430                          		objend
+D430                          		inform 0,"This BANK Size: %h",(*-BANK_Title)
+D430                          		cnop 0,4000h
+0000                          		
+0000                      BANK_Level:	obj 4000h
+4000                      		include "modes/level/data.asm"
+4000                      ; ====================================================================
+4000                      ; -------------------------------------------------
+4000                      ; DATA | ingame Screen
+4000                      ; -------------------------------------------------
+4000                      
+4000                      art_ingame:	incbin "modes/level/data/art.bin"
+7400 =00000115            art_ingame_end	equ *-art_ingame
+7400                      pal_ingame:	incbin "modes/level/data/pal.bin"
+7440                      
+7440                      art_ponbg:	incbin "modes/level/data/bg_art.bin"
+7540                      ; map_ingame:	incbin "modes/level/data/map.bin"
+7540                      ; map_ingame:	incbin "modes/level/data/map.bin"
+7540                          		objend
+3540                          		inform 0,"This BANK Size: %h",(*-BANK_Level)
+3540                          		cnop 0,4000h
+4000                          	
+4000                       
+4000                      ; thisaddr = 0
+4000                      ; BANK_WAVE:
+4000                      ;   		rept 114
+4000                      ;   		obj 4000h
+4000                      ;  		incbin "sound/data/pcm/new.raw",thisaddr,4000h
+4000                      ;  		cnop 0,4000h
+4000                      ;  		objend
+4000                      ; thisaddr = thisaddr+4000h
+4000                      ;  		endr
+4000                          		
+4000                      ; ====================================================================
+4000                      
+4000                      		inform 0,"ROM Size: %h",*
+4000                      		cnop 0,40000h
+0000                      		
+0000                      		

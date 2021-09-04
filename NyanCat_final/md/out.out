@@ -1,0 +1,2900 @@
+00000000                            ; ====================================================================
+00000000                            
+00000000                            		include	"engine/ram.asm"
+00000000                            ; =====================================================
+00000000                            ; RAM
+00000000                            ; =====================================================
+00000000                            
+00000000                            			rsset $FFFFA000			;MD/32X RAM
+00000000                            		
+00000000                            ; =====================================================
+00000000                            ; ----------------------------------------
+00000000                            ; Variables
+00000000                            ; ----------------------------------------
+00000000                            
+00000000 =00000400                  sizeof_dmabuff		equ	$400
+00000000                            
+00000000 =00000000                  bitFrameWait		equ	0
+00000000 =00000001                  bitVBlankWait		equ	1
+00000000 =00000002                  bitHBlankWait		equ	2
+00000000 =00000003                  bitDontWaitHInt		equ	3
+00000000 =00000004                  bitLockPads		equ	4
+00000000 =00000005                  bitHotStart		equ	5
+00000000                            
+00000000                            ; ----------------------------------------
+00000000                            ; Game vars
+00000000                            ; ----------------------------------------
+00000000                            
+00000000                            
+00000000                            ; =====================================================
+00000000                            ; ----------------------------------------
+00000000                            ; Mode buffer
+00000000                            ; ----------------------------------------
+00000000                            
+00000000 =FFFFA000                  RAM_ModeBuffer		rs.b	$3000
+00000000                            
+00000000                            ; ----------------------------------------
+00000000                            ; Work stuff
+00000000                            ; ----------------------------------------
+00000000                            
+00000000 =FFFFD000                  RAM_VIntAddr		rs.l	1
+00000000 =FFFFD004                  RAM_HIntAddr		rs.l	1
+00000000 =FFFFD008                  RAM_VIntWait		rs.b 	1
+00000000 =FFFFD009                  RAM_GameMode		rs.b 	1
+00000000 =FFFFD00A                  RAM_Joypads		rs.b	$80
+00000000                            
+00000000                            ; ----------------------------------------
+00000000                            ; Sound
+00000000                            ; ----------------------------------------
+00000000                            
+00000000 =FFFFD08A                  RAM_SndDriver		rs.b	$400
+00000000                            
+00000000                            ; ----------------------------------------
+00000000                            ; DMA
+00000000                            ; ----------------------------------------
+00000000                            
+00000000 =FFFFD48A                  RAM_DMA_Buffer		rs.b	sizeof_dmabuff
+00000000                            
+00000000                            ; ----------------------------------------
+00000000                            ; PalFade
+00000000                            ; ----------------------------------------
+00000000                            
+00000000 =FFFFD88A                  RAM_RunFadeCol		rs.w	$10
+00000000 =FFFFD8AA                  RAM_PalFadeBuff		rs.w	64
+00000000 =FFFFD92A                  RAM_PalFadeBuffHint	rs.w	64
+00000000                            
+00000000                            ; ----------------------------------------
+00000000                            ; Visual stuff
+00000000                            ; ----------------------------------------
+00000000                            
+00000000 =FFFFD9AA                  RAM_HorBuffer		rs.l	224
+00000000 =FFFFDD2A                  RAM_VerBuffer		rs.l	$20
+00000000 =FFFFDDAA                  RAM_SprBuffer		rs.b	(8*80)
+00000000 =FFFFE02A                  RAM_PalBuffer		rs.w	64
+00000000                            
+00000000 =FFFFE0AA                  RAM_VerBufferHint	rs.l	$20
+00000000 =FFFFE12A                  RAM_SprBufferHint	rs.l	(8*80)
+00000000 =FFFFEB2A                  RAM_PalBufferHint	rs.w	64
+00000000 =FFFFEBAA                  RAM_VdpRegs		rs.b	$18
+00000000                            
+00000000                            ; =====================================================
+00000000                            ; ----------------------------------------
+00000000                            ; Last RAM
+00000000                            ; ----------------------------------------
+00000000                            
+00000000 =FFFFEBC2                  RAM_End			rs.b	0
+00000000                            ;                        	inform 0,"RAM ENDS AT: %h",RAM_End
+00000000                            ;                        	inform 0,"RAM ENDS AT: %h",RAM_End
+00000000                            
+00000000                            ; ====================================================================
+00000000                            ; -------------------------------------------------
+00000000                            ; Header / Init
+00000000                            ; -------------------------------------------------
+00000000                            
+00000000                            		include "md/init.asm"
+00000000                            ; ====================================================================
+00000000                            ; -----------------------------------------------------------------
+00000000                            ; Header
+00000000                            ; -----------------------------------------------------------------
+00000000                            
+00000000 0000 0000                  		dc.l 0
+00000004 0000 0000                  		dc.l MD_Entry
+00000008 0000 0000                  		dc.l MD_BusError
+0000000C 0000 0000                  		dc.l MD_AddrError
+00000010 0000 0000                  		dc.l MD_IllegalError
+00000014 0000 0000                  		dc.l MD_ZeroDivError
+00000018 0000 0000                  		dc.l MD_ChkError
+0000001C 0000 0000                  		dc.l MD_TrapVError
+00000020 0000 0000                  		dc.l MD_PrivilegeError
+00000024 0000 0000                  		dc.l MD_TraceError
+00000028 0000 0000                  		dc.l MD_LineA_Error
+0000002C 0000 0000                  		dc.l MD_LineF_Error
+00000030                            
+00000030 0000 0000 0000 0000 0000+  		cnop 0,$70
+00000070 0000 0000                                  dc.l MD_Hint
+00000074 0000 0000                  		cnop 0,$78
+00000078 0000 0000                                  dc.l MD_Vint
+0000007C                            
+0000007C 0000 0000 0000 0000 0000+  		cnop 0,$100
+00000100 5345 4741 2047 454E 4553+  		dc.b "SEGA GENESIS    "
+00000110                            		cnop 0,$110
+00000110 2843 2947 4636 3420 3230+  		dc.b "(C)GF64 2016.???"
+00000120                                            cnop 0,$120
+00000120 4741 544F 2054 4152 5441+                  dc.b "GATO TARTA DEL TOSTADOR SABOR FRESA             "
+00000150                                            cnop 0,$150
+00000150 4E59 414E 2043 4154 2020+                  dc.b "NYAN CAT                                        "
+00000180 474D 2048 4F4D 4542 5245+                  dc.b "GM HOMEBREW-00"
+0000018E 0000                                       cnop 0,$190
+00000190 4A20 2020 2020 2020 2020+  		dc.b "J               "
+000001A0                            
+000001A0 0000 0000                  		dc.l 0
+000001A4 0000 0000                  		dc.l MD_RomEnd
+000001A8 00FF 0000                  		dc.l $FF0000
+000001AC 00FF FFFF                  		dc.l $FFFFFF
+000001B0 5241 E820                  		dc.b "RA",$E8,$20
+000001B4 0020 0000                  		dc.l $200000
+000001B8 0020 3FFF                  		dc.l $203FFF
+000001BC                            
+000001BC 0000 0000 0000 0000 0000+  		cnop 0,$1F0
+000001F0 5520 2020 2020 2020 2020+  		dc.b "U               "
+00000200                            		            
+00000200                            ; -----------------------------------------------------------------
+00000200                            ; Codigo para iniciar correctamente el Software
+00000200                            ;
+00000200                            ; Original: (C)SEGA
+00000200                            ; -----------------------------------------------------------------
+00000200                            
+00000200                                            cnop 0,$200
+00000200                            MD_Entry:
+00000200 4AB9 00A1 0008             		tst.l	($A10008).l	; test port A control
+00000206 6600                       		bne.s	@PortA_Ok
+00000208 4A79 00A1 000C             		tst.w	($A1000C).l	; test port C control
+0000020E                            @PortA_Ok:
+0000020E 6600                       		bne.s	@PortC_Ok
+00000210                            
+00000210 4BFA 0000                  		lea	@SetupValues(pc),a5
+00000214 4C9D 00E0                  		movem.w	(a5)+,d5-d7
+00000218 4CDD 1F00                  		movem.l	(a5)+,a0-a4
+0000021C 1029 EF01                  		move.b	-$10FF(a1),d0	; get hardware version
+00000220 0200 000F                  		andi.b	#$F,d0
+00000224 6700                       		beq.s	@Skip
+00000226 2379 0000 0100 2F00        		move.l	($100),$2F00(a1)
+0000022E                            
+0000022E                            @Skip:
+0000022E 3014                       		move.w	(a4),d0		; check	if VDP works
+00000230 7000                       		moveq	#0,d0
+00000232 2C40                       		movea.l	d0,a6
+00000234 4E66                       		move.l	a6,usp		; set usp to $0
+00000236 7217                       		moveq	#$17,d1
+00000238                            
+00000238                            @VDPInitLoop:
+00000238 1A1D                       		move.b	(a5)+,d5	; add $8000 to value
+0000023A 3885                       		move.w	d5,(a4)		; move value to	VDP register
+0000023C DA47                       		add.w	d7,d5		; next register
+0000023E 51C9 FFF8                  		dbf	d1,@VDPInitLoop
+00000242 289D                       		move.l	(a5)+,(a4)
+00000244 3680                       		move.w	d0,(a3)		; clear	the screen
+00000246 3287                       		move.w	d7,(a1)		; stop the Z80
+00000248 3487                       		move.w	d7,(a2)		; reset	the Z80
+0000024A                            
+0000024A                            @WaitForZ80:
+0000024A 0111                       		btst	d0,(a1)		; has the Z80 stopped?
+0000024C 66FC                       		bne.s	@WaitForZ80	; if not, branch
+0000024E 7425                       		moveq	#$25,d2
+00000250                            
+00000250                            @Z80InitLoop:
+00000250 10DD                       		move.b	(a5)+,(a0)+
+00000252 51CA FFFC                  		dbf	d2,@Z80InitLoop
+00000256 3480                       		move.w	d0,(a2)
+00000258 3280                       		move.w	d0,(a1)		; start	the Z80
+0000025A 3487                       		move.w	d7,(a2)		; reset	the Z80
+0000025C                            
+0000025C                            @ClrRAMLoop:
+0000025C 2D00                       		move.l	d0,-(a6)
+0000025E 51CE FFFC                  		dbf	d6,@ClrRAMLoop	; clear	the entire RAM
+00000262 289D                       		move.l	(a5)+,(a4)	; set VDP display mode and increment
+00000264 289D                       		move.l	(a5)+,(a4)	; set VDP to CRAM write
+00000266 761F                       		moveq	#$1F,d3
+00000268                            
+00000268                            @ClrCRAMLoop:
+00000268 2680                       		move.l	d0,(a3)
+0000026A 51CB FFFC                  		dbf	d3,@ClrCRAMLoop	; clear	the CRAM
+0000026E 289D                       		move.l	(a5)+,(a4)
+00000270 7813                       		moveq	#$13,d4
+00000272                            
+00000272                            @ClrVDPStuff:
+00000272 2680                       		move.l	d0,(a3)
+00000274 51CC FFFC                  		dbf	d4,@ClrVDPStuff
+00000278 7A03                       		moveq	#3,d5
+0000027A                            
+0000027A                            @PSGInitLoop:
+0000027A 175D 0011                  		move.b	(a5)+,$11(a3)	; reset	the PSG
+0000027E 51CD FFFA                  		dbf	d5,@PSGInitLoop
+00000282 3480                       		move.w	d0,(a2)
+00000284 4CD6 7FFF                  		movem.l	(a6),d0-a6	; clear	all registers
+00000288 46FC 2700                  		move	#$2700,sr	; set the sr
+0000028C                            
+0000028C                            @PortC_Ok:
+0000028C 6000 0000                  		bra	@LastJob
+00000290                            ; ===========================================================================
+00000290 8000                       @SetupValues:	dc.w $8000		; XREF: PortA_Ok
+00000292 3FFF                       		dc.w $3FFF
+00000294 0100                       		dc.w $100
+00000296                            
+00000296 00A0 0000                  		dc.l $A00000		; start	of Z80 RAM
+0000029A 00A1 1100                  		dc.l $A11100		; Z80 bus request
+0000029E 00A1 1200                  		dc.l $A11200		; Z80 reset
+000002A2 00C0 0000                  		dc.l $C00000
+000002A6 00C0 0004                  		dc.l $C00004		; address for VDP registers
+000002AA                            
+000002AA 0414 303C                  		dc.b 4,	$14, $30, $3C	; values for VDP registers
+000002AE 076C 0000                  		dc.b 7,	$6C, 0,	0
+000002B2 0000 FF00                  		dc.b 0,	0, $FF,	0
+000002B6 8137 0001                  		dc.b $81, $37, 0, 1
+000002BA 0100 00FF                  		dc.b 1,	0, 0, $FF
+000002BE FF00 0080                  		dc.b $FF, 0, 0,	$80
+000002C2                            
+000002C2 4000 0080                  		dc.l $40000080
+000002C6                            
+000002C6 AF01 D91F 1127 0021 2600+  		dc.b $AF, 1, $D9, $1F, $11, $27, 0, $21, $26, 0, $F9, $77 ; Z80	instructions
+000002D2 EDB0 DDE1 FDE1 ED47 ED4F   		dc.b $ED, $B0, $DD, $E1, $FD, $E1, $ED,	$47, $ED, $4F
+000002DC D1E1 F108 D9C1 D1E1 F1F9+  		dc.b $D1, $E1, $F1, 8, $D9, $C1, $D1, $E1, $F1,	$F9, $F3
+000002E7 ED56 36E9 E9               		dc.b $ED, $56, $36, $E9, $E9
+000002EC                            
+000002EC 8164                       		dc.w $8164		; value	for VDP	display	mode
+000002EE 8F02                       		dc.w $8F02		; value	for VDP	increment
+000002F0 C000 0000                  		dc.l $C0000000		; value	for CRAM write mode
+000002F4 4000 0010                  		dc.l $40000010
+000002F8                            
+000002F8 9FBF DFFF                  		dc.b $9F, $BF, $DF, $FF	; values for PSG channel volumes
+000002FC                            ; -------------------------------------------------------
+000002FC                            
+000002FC                            @LastJob:
+000002FC                            ;  		lea	($FFFF0000),a0
+000002FC                            ;  		move.w	#((RAM_VIntAddr)-$FFFF0000)/4,d0
+000002FC                            ; @ClrRam:
+000002FC                            ;  		clr.l	(a0)+
+000002FC                            ;  		dbf	d0,@ClrRam
+000002FC                             		
+000002FC 13FC 0000 FFFF D009        		move.b	#0,(RAM_GameMode)
+00000304 6000 0000                  		bra 	MD_Main
+00000308                            		
+00000308                            		
+00000308                            		include	"md/error.asm"
+00000308                            ; ===========================================================================
+00000308                            ; Error screen
+00000308                            ; ===========================================================================
+00000308                            		
+00000308                            MD_BusError:
+00000308 6100 0000                  		bsr	ErrorScr_Init
+0000030C 41FA 0000                  		lea	Asc_ErrBus(pc),a0
+00000310 6100 0000                  		bsr	ErrorScr_ShowMsg
+00000314 6000 0000                  		bra	ErrorScr_Loop
+00000318                            
+00000318                            MD_AddrError:
+00000318 6100 0000                  		bsr	ErrorScr_Init
+0000031C 41FA 0000                  		lea	Asc_ErrAddr(pc),a0
+00000320 6100 0000                  		bsr	ErrorScr_ShowMsg
+00000324 6000                       		bra.s	ErrorScr_Loop
+00000326                            
+00000326                            MD_IllegalError:
+00000326 6100 0000                  		bsr	ErrorScr_Init
+0000032A 41FA 0000                  		lea	Asc_ErrIlle(pc),a0
+0000032E 6100 0000                  		bsr	ErrorScr_ShowMsg
+00000332 6000                       		bra.s	ErrorScr_Loop
+00000334                            
+00000334                            MD_ZeroDivError:
+00000334 6100 0000                  		bsr	ErrorScr_Init
+00000338 41FA 0000                  		lea	Asc_ErrZerDiv(pc),a0
+0000033C 6100 0000                  		bsr	ErrorScr_ShowMsg
+00000340 6000                       		bra.s	ErrorScr_Loop
+00000342                            
+00000342                            MD_ChkError:
+00000342 6100 0000                  		bsr	ErrorScr_Init
+00000346 41FA 0000                  		lea	Asc_ErrChk(pc),a0
+0000034A 6100 0000                  		bsr	ErrorScr_ShowMsg
+0000034E 6000                       		bra.s	ErrorScr_Loop
+00000350                            
+00000350                            MD_TrapVError:
+00000350 6100 0000                  		bsr	ErrorScr_Init
+00000354 41FA 0000                  		lea	Asc_ErrTrapV(pc),a0
+00000358 6100 0000                  		bsr	ErrorScr_ShowMsg
+0000035C 6000                       		bra.s	ErrorScr_Loop
+0000035E                            
+0000035E                            MD_PrivilegeError:
+0000035E 6100 0000                  		bsr	ErrorScr_Init
+00000362 41FA 0000                  		lea	Asc_ErrPriv(pc),a0
+00000366 6100 0000                  		bsr	ErrorScr_ShowMsg
+0000036A 6000                       		bra.s	ErrorScr_Loop
+0000036C                            
+0000036C                            MD_TraceError:
+0000036C 6100 0000                  		bsr	ErrorScr_Init
+00000370 41FA 0000                  		lea	Asc_ErrTrace(pc),a0
+00000374 6100 0000                  		bsr	ErrorScr_ShowMsg
+00000378 6000                       		bra.s	ErrorScr_Loop
+0000037A                            
+0000037A                            MD_LineA_Error:
+0000037A 6100 0000                  		bsr	ErrorScr_Init
+0000037E 41FA 0000                  		lea	Asc_ErrLineA(pc),a0
+00000382 6100 0000                  		bsr	ErrorScr_ShowMsg
+00000386 6000                       		bra.s	ErrorScr_Loop
+00000388                            
+00000388                            MD_LineF_Error:
+00000388 6100 0000                  		bsr	ErrorScr_Init
+0000038C 41FA 0000                  		lea	Asc_ErrLineF(pc),a0
+00000390 6100 0000                  		bsr	ErrorScr_ShowMsg
+00000394                            
+00000394                            ; ----------------------------------------------
+00000394                            ; Loop
+00000394                            ; ----------------------------------------------
+00000394                            
+00000394                            ErrorScr_Loop:
+00000394 6100 0000                  		bsr	Pads_Read
+00000398                            
+00000398 0C39 0000 0000 0000        		cmp.b	#JoyC,(RAM_Joypads+OnPress)
+000003A0 6700                       		beq.s	@View
+000003A2 60F0                       		bra.s	ErrorScr_Loop
+000003A4                            
+000003A4                            ; ----------------------------------------------
+000003A4                            
+000003A4                            @View:
+000003A4 33FC 8124 00C0 0004        		move.w	#$8124,($C00004)
+000003AC 33FC 8C00 00C0 0004        		move.w	#$8C00,($C00004)
+000003B4 23FC 9000 927C 00C0 0004   		move.l	#$9000927C,($C00004)
+000003BE 33FC 927C 00C0 0004        		move.w	#$927C,($C00004)
+000003C6 33FC 8164 00C0 0004        		move.w	#$8164,($C00004)
+000003CE 0879 0000 FFFF 7000        		bchg	#0,($FFFF7000)
+000003D6 67BC                       		beq.s	ErrorScr_Loop
+000003D8                            
+000003D8 33FC 8124 00C0 0004        		move.w	#$8124,($C00004)
+000003E0 23FC 8C01 9081 00C0 0004   		move.l	#$8C019081,($C00004)
+000003EA 33FC 9200 00C0 0004        		move.w	#$9200,($C00004)
+000003F2 33FC 8164 00C0 0004        		move.w	#$8164,($C00004)
+000003FA 6098                       		bra.s	ErrorScr_Loop
+000003FC                            
+000003FC                            ; ===========================================================================
+000003FC                            ; ----------------------------------------------
+000003FC                            ; Init
+000003FC                            ; ----------------------------------------------
+000003FC                            
+000003FC                            ErrorScr_Init:	
+000003FC 46FC 2700                   		move.w	#$2700,sr
+00000400 48F9 FFFF FFFF 7000         		movem.l	d0-d7/a0-a7,($FFFF7000)
+00000408 13FC 0000 0000 0000         		move.b	#0,(RAM_VdpRegs+vdpReg_PlnSize)
+00000410                             		
+00000410 23FC 8124 8C00 00C0 0004    		move.l	#$81248C00,($C00004)
+0000041A 23FC 9000 927C 00C0 0004    		move.l	#$9000927C,($C00004)
+00000424 13FC 009F 00C0 0011        		move.b	#$9F,($C00011)
+0000042C 13FC 00BF 00C0 0011         		move.b	#$BF,($C00011)
+00000434 13FC 00DF 00C0 0011         		move.b	#$DF,($C00011)
+0000043C 13FC 00FF 00C0 0011         		move.b	#$FF,($C00011)
+00000444                            
+00000444 23FC 5000 0003 00C0 0004      		move.l	#$50000003,($C00004)
+0000044E 303C 037F                     		move.w	#$37F,d0
+00000452                            @ClrWinScr:
+00000452 33FC 8580 00C0 0000           		move.w	#$8580,($C00000)
+0000045A 51C8 FFF6                     		dbf	d0,@ClrWinScr
+0000045E                            
+0000045E 41FA 0000                   		lea	Asc_ErrScr(pc),a0
+00000462 223C 0000 0000              		move.l	#Plane_WD+(vdp_Ypos_32*8)+(vdp_Xpos*3),d1
+00000468 343C E560                   		move.w	#$8560+$6000,d2
+0000046C 7600                        		moveq	#0,d3
+0000046E 6100 0000                   		bsr	VDP_LoadAsc
+00000472                             
+00000472 41FA 0000                    		lea	Art_DbgFont(pc),a0
+00000476 303C 0580                    		move.w	#$580,d0
+0000047A 323C 0000                    		move.w	#((Art_DbgFont_End-Art_DbgFont)/4)-1,d1
+0000047E 6100 0000                    		bsr	VDP_SendData_L
+00000482                            
+00000482 43F9 FFFF 7000              		lea	($FFFF7000),a1
+00000488 263C 0000 0000              		move.l	#Plane_WD+(vdp_Ypos_32*8)+(vdp_Xpos*7),d3
+0000048E 7A07                        		moveq	#7,d5
+00000490                            @ShowDdata:
+00000490 48E7 1000                   		movem.l	d3,-(sp)
+00000494 7000                                       moveq	#0,d0
+00000496 2011                                       move.l	(a1),d0
+00000498 2203                                       move.l	d3,d1
+0000049A 343C E590                                  move.w	#$8560+$6000+"0",d2
+0000049E 6100 0000                                  bsr	VDP_ShowVal_Long
+000004A2 4CDF 0008                                  movem.l	(sp)+,d3
+000004A6                             
+000004A6 0683 0040 0000                             add.l	#$400000,d3
+000004AC D2FC 0004                                  adda	#4,a1
+000004B0 51CD FFDE                   		dbf	d5,@ShowDdata
+000004B4                            
+000004B4 43F9 FFFF 7020              		lea	($FFFF7020),a1
+000004BA 263C 0000 0000              		move.l	#Plane_WD+(vdp_Ypos_32*8)+(vdp_Xpos*20),d3
+000004C0 7A07                        		moveq	#7,d5
+000004C2                            @ShowAdata:
+000004C2 48E7 1000                   		movem.l	d3,-(sp)
+000004C6 7000                                       moveq	#0,d0
+000004C8 2011                                       move.l	(a1),d0
+000004CA 2203                                       move.l	d3,d1
+000004CC 343C E590                                  move.w	#$8560+$6000+"0",d2
+000004D0 6100 0000                                  bsr	VDP_ShowVal_Long
+000004D4 4CDF 0008                                  movem.l	(sp)+,d3
+000004D8                            
+000004D8 0683 0040 0000                             add.l	#$400000,d3
+000004DE D2FC 0004                                  adda	#4,a1
+000004E2 51CD FFDE                  		dbf	d5,@ShowAdata
+000004E6                             
+000004E6 4239 FFFF 7000               		clr.b	($FFFF7000)
+000004EC                            
+000004EC 33FC 8164 00C0 0004         		move.w	#$8164,($C00004)
+000004F4 4E75                       		rts
+000004F6                            
+000004F6                            ; ----------------------------------------------
+000004F6                            ; Show error text
+000004F6                            ; ----------------------------------------------
+000004F6                            
+000004F6                            ErrorScr_ShowMsg:
+000004F6 223C 5106 0003             		move.l	#$51060003,d1
+000004FC 343C E560                  		move.w	#$8560+$6000,d2
+00000500 7600                       		moveq	#0,d3
+00000502 6000 0000                  		bra	VDP_LoadAsc
+00000506                            
+00000506                            ; ===========================================================================
+00000506                            
+00000506                            Asc_ErrScr:
+00000506 4430 2024 3030 3030 3030+  		dc.b "D0 $00000000 A0 $",$A
+00000518 4431 2024 3030 3030 3030+  		dc.b "D1 $00000000 A1 $",$A
+0000052A 4432 2024 3030 3030 3030+  		dc.b "D2 $00000000 A2 $",$A
+0000053C 4433 2024 3030 3030 3030+  		dc.b "D3 $00000000 A3 $",$A
+0000054E 4434 2024 3030 3030 3030+  		dc.b "D4 $00000000 A4 $",$A
+00000560 4435 2024 3030 3030 3030+  		dc.b "D5 $00000000 A5 $",$A
+00000572 4436 2024 3030 3030 3030+  		dc.b "D6 $00000000 A6 $",$A
+00000584 4437 2024 3030 3030 3030+  		dc.b "D7 $00000000 SP $00000000",$A
+0000059E 0A                         		dc.b $A
+0000059F 5072 6573 7320 4320 746F+  		dc.b "Press C to see the last",$A
+000005B7 6672 616D 6520 6D6F 6D65+  		dc.b "frame moment           ",$A
+000005CF 2877 6974 686F 7574 2057+  		dc.b "(without WINDOW layer) ",$A
+000005E7 00                         		dc.b 0
+000005E8                            		even
+000005E8                            
+000005E8 4255 5320 4552 524F 5220+  Asc_ErrBus:	dc.b "BUS ERROR                ",$A
+00000602 0A                         		dc.b $A
+00000603 4265 6570 2062 6565 702E+  		dc.b "Beep beep...             ",0
+0000061E 00                         		even
+0000061E                            		
+0000061E 4144 4452 4553 5320 4552+  Asc_ErrAddr:	dc.b "ADDRESS ERROR            ",$A
+00000638 0A                         		dc.b $A
+00000639 4765 6E65 7369 7320 646F+  		dc.b "Genesis doesnt like ODD  ",0
+00000654 00                         		even
+00000654                            		
+00000654 494C 4C45 4741 4C20 496E+  Asc_ErrIlle:	dc.b "ILLEGAL Instruction      ",$A
+0000066E 0A                         		dc.b $A
+0000066F 594F 5520 4152 4520 554E+  		dc.b "YOU ARE UNDER ARREST     ",0
+0000068A 00                         		even
+0000068A                            		
+0000068A 5A45 524F 2044 4956 4944+  Asc_ErrZerDiv:	dc.b "ZERO DIVIDE              ",$A
+000006A4 0A                         		dc.b $A
+000006A5 424F 4F4D 2028 3E2A 5F2A+  		dc.b "BOOM (>*_*)>              ",0
+000006C0                            		even
+000006C0                            		
+000006C0 4348 4B20 494E 5354 5255+  Asc_ErrChk:	dc.b "CHK INSTRUCTION          ",$A
+000006DA 0A                         		dc.b $A
+000006DB 4348 4B61 7465 2065 7374+  		dc.b "CHKate esta .l.          ",0
+000006F6 00                         		even
+000006F6                            		
+000006F6 5452 4150 5620 4552 524F+  Asc_ErrTrapV:	dc.b "TRAPV ERROR              ",$A
+00000710 0A                         		dc.b $A
+00000711 4954 5320 4120 5452 4150+  		dc.b "ITS A TRAP               ",0
+0000072C 00                         		even
+0000072C                            		
+0000072C 5052 4956 494C 4547 4520+  Asc_ErrPriv:	dc.b "PRIVILEGE ERROR          ",$A
+00000746 0A                         		dc.b $A
+00000747 566F 746F 2070 6F72 2056+  		dc.b "Voto por Voto            ",0
+00000762 00                         		even
+00000762                            		
+00000762 5452 4143 4520 2020 2020+  Asc_ErrTrace:	dc.b "TRACE                    ",$A
+0000077C 0A                         		dc.b $A
+0000077D 5452 4143 4564 203E 5F3E+  		dc.b "TRACEd >_>               ",0
+00000798 00                         		even
+00000798                            		
+00000798 4C49 4E45 4120 4552 524F+  Asc_ErrLineA:	dc.b "LINEA ERROR              ",$A
+000007B2 0A                         		dc.b $A
+000007B3 4869 2046 7573 696F 6E20+  		dc.b "Hi Fusion or Gens        ",0
+000007CE 00                         		even
+000007CE                            		
+000007CE 4C49 4E45 4620 4552 524F+  Asc_ErrLineF:	dc.b "LINEF ERROR              ",$A
+000007E8 0A                         		dc.b $A
+000007E9 5354 4F50 204C 4F4F 4B49+  		dc.b "STOP LOOKING AT HERE TCRF",0
+00000804 00                         		even
+00000804                            		
+00000804                            Art_DbgFont:	incbin	"engine/shared/data/art_dbgfont.bin",0,($20*96)
+00001404                            Art_DbgFont_End:
+00001404                            
+00001404                             		even
+00001404                             		even
+00001404                            		     
+00001404                            ; -------------------------------------------------
+00001404                            ; Program data
+00001404                            ; -------------------------------------------------
+00001404                            
+00001404                            		include	"engine/main.asm"
+00001404                            ; ====================================================================
+00001404                            ; -------------------------------------------------
+00001404                            ; Start
+00001404                            ; -------------------------------------------------
+00001404                            
+00001404                            MD_Main:
+00001404 46FC 2700                  		move.w	#$2700,sr
+00001408                            		
+00001408 23FC 0000 0000 FFFF D000   		move.l	#VInt_Default,(RAM_VIntAddr)
+00001412 23FC 0000 0000 FFFF D004   		move.l	#Hint_Default,(RAM_HIntAddr)
+0000141C 4239 FFFF D008             		clr.b	(RAM_VIntWait)
+00001422 42B9 FFFF D48A             		clr.l	(RAM_DMA_Buffer)
+00001428                            		
+00001428 6100 0000                  		bsr	Vdp_Init
+0000142C 6100 0000                  		bsr	Pads_Init
+00001430 6100 0000                  		bsr	Z80_Init
+00001434                            		
+00001434 46FC 2000                  		move.w	#$2000,sr
+00001438                            		
+00001438 203C 0000 0000             		move.l	#ID_FadeOut,d0
+0000143E 223C 003F 0001              		move.l	#$003F0001,d1
+00001444 6100 0000                   		bsr	PalFade_Set
+00001448 6100 0000                   		bsr	PalFade_Wait
+0000144C                             		
+0000144C                            ; -------------------------------------------------
+0000144C                            ; Modes
+0000144C                            ; -------------------------------------------------
+0000144C                            
+0000144C                            @RunMode:
+0000144C 7000                                       moveq	#0,d0
+0000144E 1039 FFFF D009                             move.b	(RAM_GameMode),d0
+00001454 E548                                       lsl.w	#2,d0
+00001456 0240 00FC                                  and.w	#%11111100,d0
+0000145A 41FA 0000                                  lea	GameModes(pc),a0
+0000145E 2070 0000                                  movea.l	(a0,d0.w),a0
+00001462 4E90                                       jsr	(a0)
+00001464 60E6                                       bra.s	@RunMode
+00001464 60E6                                       bra.s	@RunMode
+00001466                            
+00001466                            ; -------------------------------------------------
+00001466                            ; Mode list
+00001466                            ; -------------------------------------------------
+00001466                            
+00001466                            GameModes:
+00001466 0000 0000                   		dc.l mode_Title
+0000146A                            ;  		dc.l mode_Level
+0000146A                             		even
+0000146A                            
+0000146A                            ; ====================================================================
+0000146A                            ; ---------------------------------------------
+0000146A                            ; Subs
+0000146A                            ; ---------------------------------------------
+0000146A                            
+0000146A                            		include	"engine/subs/vdp.asm"
+0000146A                            ; ====================================================================
+0000146A                            ; ---------------------------------------------
+0000146A                            ; VDP
+0000146A                            ; ---------------------------------------------
+0000146A                            
+0000146A =40000003                  Plane_FG	equ	$40000003
+0000146A =50000003                  Plane_WD	equ	$50000003
+0000146A =60000003                  Plane_BG	equ	$60000003
+0000146A                            
+0000146A =00020000                  vdp_Xpos	equ	$20000
+0000146A =00400000                  vdp_Ypos_32	equ	$400000
+0000146A =00800000                  vdp_Ypos_40	equ	$800000
+0000146A =01000000                  vdp_Ypos_128	equ	$1000000
+0000146A                            
+0000146A =00000004                  bit_vdpHint	equ	4
+0000146A                            
+0000146A =00000081                  vdp_H40		equ	$81
+0000146A =00000000                  vdp_H32		equ	$00
+0000146A =00000006                  vdp_Double	equ	%00000110
+0000146A                            
+0000146A =0000000C                  vdpReg_HMode	equ	$C
+0000146A =00000010                  vdpReg_PlnSize	equ	$10
+0000146A                            
+0000146A                            ; --------------------------------------------
+0000146A                            ; Clear planes
+0000146A                            ; --------------------------------------------
+0000146A                            
+0000146A                            VDP_ClearPlanes:
+0000146A 6100 0000                  		bsr	VDP_ClrPlane_FG
+0000146E                            
+0000146E                            VDP_ClrPlane_BG:
+0000146E 23FC 6000 0003 00C0 0004   		move.l	#Plane_BG,($C00004).l
+00001478 303C 07FF                  		move.w	#$7FF,d0
+0000147C                            @ClrBG:
+0000147C 42B9 00C0 0000             		clr.l	($C00000).l
+00001482 51C8 FFF8                  		dbf	d0,@ClrBG
+00001486 4E75                       		rts
+00001488                            
+00001488                            VDP_ClrPlane_FG:
+00001488 23FC 4000 0003 00C0 0004   		move.l	#Plane_FG,($C00004).l
+00001492 303C 07FF                  		move.w	#$7FF,d0
+00001496                            @ClrFG:
+00001496 42B9 00C0 0000             		clr.l	($C00000).l
+0000149C 51C8 FFF8                  		dbf	d0,@ClrFG
+000014A0 4E75                       		rts
+000014A2                            
+000014A2                            ; --------------------------------------------
+000014A2                            ; VDP_ClearScroll
+000014A2                            ;
+000014A2                            ; Set both scrollings to $0000
+000014A2                            ; --------------------------------------------
+000014A2                            
+000014A2                            VDP_ClearScroll:
+000014A2 41F9 FFFF D9AA             		lea	(RAM_HorBuffer),a0
+000014A8 303C 037F                  		move.w	#$37F,d0
+000014AC                            @ClrScrl:
+000014AC 4298                       		clr.l	(a0)+
+000014AE 51C8 FFFC                  		dbf	d0,@ClrScrl
+000014B2                            		
+000014B2 41F9 FFFF DD2A             		lea	(RAM_VerBuffer),a0
+000014B8 303C 007F                  		move.w	#$7F,d0
+000014BC                            @ClrVScrl:
+000014BC 4298                       		clr.l	(a0)+
+000014BE 51C8 FFFC                  		dbf	d0,@ClrVScrl
+000014C2 4E75                       		rts
+000014C4                            
+000014C4                            ; --------------------------------------------
+000014C4                            ; VDP_SendData_W, VDP_SendData_L
+000014C4                            ;
+000014C4                            ; Input:
+000014C4                            ; a0 - Data address
+000014C4                            ;
+000014C4                            ; d0 | VRAM Address
+000014C4                            ; d1 | Data size
+000014C4                            ; --------------------------------------------
+000014C4                            
+000014C4                            VDP_SendData_W:
+000014C4 6100 0000                  		bsr	VDP_VramAddr
+000014C8 23C0 00C0 0004             		move.l	d0,($C00004)
+000014CE                            @Loop:
+000014CE 33D8 00C0 0000             		move.w	(a0)+,($C00000).l
+000014D4 51C9 FFF8                  		dbf	d1,@Loop
+000014D8 4E75                       		rts
+000014DA                            
+000014DA                            VDP_SendData_L:
+000014DA 6100 0000                  		bsr	VDP_VramAddr
+000014DE 23C0 00C0 0004             		move.l	d0,($C00004)
+000014E4                            @Loop:
+000014E4 23D8 00C0 0000             		move.l	(a0)+,($C00000).l
+000014EA 51C9 FFF8                  		dbf	d1,@Loop
+000014EE 4E75                       		rts
+000014F0                            
+000014F0                            ; --------------------------------------------
+000014F0                            ; VDP_VramAddr
+000014F0                            ;
+000014F0                            ; Input:
+000014F0                            ; d0 | WORD - VRAM to convert
+000014F0                            ;
+000014F0                            ; Output:
+000014F0                            ; d0 | LONG - VDP Command (Write mode)
+000014F0                            ; --------------------------------------------
+000014F0                            
+000014F0                            VDP_VramAddr:
+000014F0 4840                       		swap	d0
+000014F2 303C 0000                  		move.w	#0,d0
+000014F6 4840                       		swap	d0
+000014F8 0C40 0200                  		cmp.w	#$200,d0
+000014FC 6D00                       		blt.s	@NoBank
+000014FE 4840                       		swap	d0
+00001500 303C 0001                  		move.w	#1,d0
+00001504 4840                       		swap	d0
+00001506 0C40 0400                  		cmp.w	#$400,d0
+0000150A 6D00                       		blt.s	@NoBank
+0000150C 4840                       		swap	d0
+0000150E 303C 0002                  		move.w	#2,d0
+00001512 4840                       		swap	d0
+00001514 0C40 0600                  		cmp.w	#$600,d0
+00001518 6D00                       		blt.s	@NoBank
+0000151A 4840                       		swap	d0
+0000151C 303C 0003                  		move.w	#3,d0
+00001520 4840                       		swap	d0
+00001522                            @NoBank:
+00001522 0240 01FF                   		and.w	#$1FF,d0
+00001526 EB48                       		lsl.w	#5,d0
+00001528 0640 4000                   		add.w	#$4000,d0
+0000152C 4840                       		swap	d0
+0000152E 4E75                       		rts
+00001530                            		
+00001530                            ; --------------------------------------------
+00001530                            ; VDP_ShowVal
+00001530                            ;
+00001530                            ; Input:
+00001530                            ; d0 | B/W/L - Value
+00001530                            ; d1 | LONG - VDP
+00001530                            ; d2 | WORD - VRAM
+00001530                            ;
+00001530                            ; Breaks:
+00001530                            ; d4
+00001530                            ; --------------------------------------------
+00001530                            
+00001530                            VDP_ShowVal_Long:
+00001530 48E7 A000                  		movem.l	d0/d2,-(sp)
+00001534 2801                       		move.l	d1,d4
+00001536 4840                       		swap	d0
+00001538 6100 0000                  		bsr	VDP_ShowVal_Word
+0000153C 0684 0004 0000                             add.l	#$40000,d4
+00001542 2204                                       move.l	d4,d1
+00001544                            
+00001544 4CDF 0005                  		movem.l	(sp)+,d0/d2
+00001548                            
+00001548                            VDP_ShowVal_Word:
+00001548 48E7 A000                  		movem.l	d0/d2,-(sp)
+0000154C 2801                       		move.l	d1,d4
+0000154E E048                       		lsr.w	#8,d0
+00001550 6100 0000                  		bsr	VDP_ShowVal_Byte
+00001554 0684 0004 0000             		add.l	#$40000,d4
+0000155A 2204                                       move.l	d4,d1
+0000155C                            
+0000155C 4CDF 0005                  		movem.l	(sp)+,d0/d2
+00001560                            
+00001560                            VDP_ShowVal_Byte:
+00001560 23C1 00C0 0004             		move.l	d1,($C00004)
+00001566                            
+00001566 1600                       		move.b	d0,d3
+00001568 E808                       		lsr.b	#4,d0
+0000156A 6100 0000                  		bsr	@PrevVal
+0000156E 1003                       		move.b	d3,d0
+00001570                            @PrevVal:
+00001570 0240 000F                  		andi.w	#$F,d0
+00001574 0C40 000A                  		cmp.w	#$A,d0
+00001578 6500 0000                  		bcs	@Less
+0000157C 0640 0007                  		add.w	#7,d0
+00001580                            @Less
+00001580 D042                       		add.w	d2,d0
+00001582 33C0 00C0 0000             		move.w	d0,($C00000)
+00001588 4E75                       		rts
+0000158A                            
+0000158A                            ; --------------------------------------------
+0000158A                            ; Tamaño 8x16
+0000158A                            ;
+0000158A                            ; Input:
+0000158A                            ; d0 | B/W/L - Value
+0000158A                            ; d1 | LONG - VDP
+0000158A                            ; d2 | WORD - VRAM
+0000158A                            ; --------------------------------------------
+0000158A                            
+0000158A                            VDP_ShowVal_Long_L:
+0000158A 48E7 A000                  		movem.l	d0/d2,-(sp)
+0000158E 2C01                       		move.l	d1,d6
+00001590 4840                       		swap	d0
+00001592 6100 0000                  		bsr	VDP_ShowVal_Word_L
+00001596 0686 0004 0000                             add.l	#$40000,d6
+0000159C 2206                                       move.l	d6,d1
+0000159E                            
+0000159E 4CDF 0005                  		movem.l	(sp)+,d0/d2
+000015A2                            
+000015A2                            VDP_ShowVal_Word_L:
+000015A2 48E7 A000                  		movem.l	d0/d2,-(sp)
+000015A6 2C01                       		move.l	d1,d6
+000015A8 E048                       		lsr.w	#8,d0
+000015AA 6100 0000                  		bsr	VDP_ShowVal_Byte_L
+000015AE 0686 0004 0000                             add.l	#$40000,d6
+000015B4 2206                                       move.l	d6,d1
+000015B6                            
+000015B6 4CDF 0005                  		movem.l	(sp)+,d0/d2
+000015BA                            
+000015BA                            
+000015BA                            VDP_ShowVal_Byte_L:
+000015BA 4DF9 00C0 0000             		lea	($C00000).l,a6
+000015C0                            
+000015C0 3800                                       move.w	d0,d4
+000015C2 2A01                                       move.l	d1,d5
+000015C4                            
+000015C4 E808                                       lsr.b	#4,d0
+000015C6 6100 0000                  		bsr	@ShowNextVal
+000015CA                            
+000015CA 0685 0002 0000                             add.l	#$20000,d5
+000015D0 0640 0001                  		add.w	#1,d0
+000015D4                            
+000015D4 3004                                       move.w	d4,d0
+000015D6 2205                                       move.l	d5,d1
+000015D8                            
+000015D8                            @ShowNextVal:
+000015D8 D040                       		add.w	d0,d0
+000015DA                            
+000015DA 0240 001F                  		and.w	#$1F,d0
+000015DE                            
+000015DE D042                       		add.w	d2,d0
+000015E0 2D41 0004                  		move.l	d1,4(a6)		;Set VDP Command
+000015E4                            
+000015E4 3600                               	move.w	d0,d3
+000015E6 3C80                       		move.w	d0,(a6)
+000015E8                            
+000015E8 0643 0001                           	add.w	#1,d3
+000015EC 0681 0080 0000                             add.l	#$800000,d1
+000015F2                            
+000015F2 3003                       		move.w	d3,d0
+000015F4 2D41 0004                  		move.l	d1,4(a6)		;Set VDP Command
+000015F8 3C80                       		move.w	d0,(a6)
+000015FA 4E75                       		rts
+000015FC                            
+000015FC                            ; --------------------------------------------
+000015FC                            
+000015FC                            VDP_LoadAsc_List:
+000015FC 3011                       		move.w	(a1),d0
+000015FE 6A00                                       bpl.s	@GoodPointer
+00001600 4E75                       		rts
+00001602                            
+00001602                            @GoodPointer:
+00001602 2059                       		movea.l	(a1)+,a0
+00001604 2218                       		move.l	(a0)+,d1
+00001606 3418                       		move.w	(a0)+,d2
+00001608 6100                       		bsr.s	VDP_LoadAsc
+0000160A                            
+0000160A 60F0                       		bra.s	VDP_LoadAsc_List
+0000160C                            
+0000160C                            ; --------------------------------------------
+0000160C                            ; VDP_LoadMaps
+0000160C                            ; 
+0000160C                            ; Input:
+0000160C                            ; d0 | LONG - VDP Command
+0000160C                            ; d1 | WORD - X size - 1
+0000160C                            ; d2 | WORD - Y size - 1
+0000160C                            ; d3 | WORD - VRAM
+0000160C                            ;
+0000160C                            ; OLD: d4 | WORD - Horizontal mode ID
+0000160C                            ; --------------------------------------------
+0000160C                            
+0000160C                            VDP_LoadMaps:
+0000160C 1839 FFFF EBBA             		move.b	(RAM_VdpRegs+vdpReg_PlnSize),d4
+00001612 0244 0003                  		and.w	#%00000011,d4
+00001616 E54C                       		lsl.w	#2,d4
+00001618 4BFA 0000                  		lea	VDP_LineAddr(pc),a5
+0000161C 2835 4000                  		move.l	(a5,d4.w),d4
+00001620                            
+00001620                            @Y_Loop:
+00001620 23C0 00C0 0004             		move.l	d0,($C00004).l		;Set VDP location from d0
+00001626 3A01                       		move.w	d1,d5	  		;Move X-pos value to d3
+00001628                            
+00001628                            @X_Loop:
+00001628 3C18                       		move.w	(a0)+,d6
+0000162A DC43                                       add.w	d3,d6
+0000162C 33C6 00C0 0000                             move.w	d6,($C00000)		;Put data
+00001632 51CD FFF4                  		dbf	d5,@X_Loop		;X-pos loop (from d1 to d3)
+00001636 D084                       		add.l	d4,d0                   ;Next line
+00001638 51CA FFE6                  		dbf	d2,@Y_Loop		;Y-pos loop
+0000163C 4E75                       		rts
+0000163E                            
+0000163E                            ; --------------------------------------------
+0000163E                            ; VDP_LoadAsc
+0000163E                            ;
+0000163E                            ; Input:
+0000163E                            ; a0 - String
+0000163E                            ; 
+0000163E                            ; d1 | LONG - VDP
+0000163E                            ; d2 | WORD - VRAM
+0000163E                            ; d3 | WORD - Horizontal mode ID
+0000163E                            ; --------------------------------------------
+0000163E                            
+0000163E                            VDP_LoadAsc:
+0000163E 23C1 00C0 0004             		move.l	d1,($C00004).l
+00001644                            
+00001644                            @Loop_Text:
+00001644 7800                       		moveq	#0,d4
+00001646 1818                       		move.b	(a0)+,d4
+00001648 3A04                       		move.w	d4,d5
+0000164A 0C45 000A                  		cmp.w	#$0A,d5
+0000164E 6700 0000                  		beq	@NextLine
+00001652 0C45 000D                  		cmp.w	#$0D,d5
+00001656 6700 0000                  		beq	@NewLine
+0000165A 4A45                       		tst.w	d5
+0000165C 6600 0000                  		bne	@TypeChar
+00001660 4E75                       		rts
+00001662                            
+00001662                            @NewLine:
+00001662 0681 0002 0000             		add.l	#$20000,d1
+00001668 6000 FFD4                  		bra	VDP_LoadAsc
+0000166C                            		
+0000166C                            @TypeChar:
+0000166C D842                       		add.w	d2,d4
+0000166E 33C4 00C0 0000             		move.w	d4,($C00000).l
+00001674 6000 FFCE                  		bra	@Loop_Text
+00001678                            		
+00001678                            @NextLine:
+00001678 7A00                       		moveq	#0,d5
+0000167A 1A39 FFFF EBBA             		move.b	(RAM_VdpRegs+vdpReg_PlnSize),d5
+00001680 0245 0003                  		and.w	#%00000011,d5
+00001684 E54D                       		lsl.w	#2,d5
+00001686 2A3B 5000                  		move.l	VDP_LineAddr(pc,d5.w),d5
+0000168A D285                       		add.l	d5,d1
+0000168C                            
+0000168C 6000 FFB0                  		bra	VDP_LoadAsc
+00001690                            
+00001690                            ; --------------------------------------------
+00001690                            ; Vdp_Init
+00001690                            ;
+00001690                            ; Set the default registers
+00001690                            ; --------------------------------------------
+00001690                            
+00001690                            Vdp_Init:
+00001690 41FA 0000                  		lea	Vdp_RegData(pc),a0
+00001694 43F9 FFFF EBAA             		lea	(RAM_VdpRegs),a1
+0000169A 323C 8000                  		move.w	#$8000,d1
+0000169E 7016                       		moveq	#$17-1,d0
+000016A0                            @Loop:
+000016A0 12D8                       		move.b	(a0)+,(a1)+
+000016A2 51C8 FFFC                  		dbf	d0,@Loop
+000016A6 4E75                       		rts
+000016A8                            
+000016A8                            ; --------------------------------------------
+000016A8                            ; Vdp_Update
+000016A8                            ;
+000016A8                            ; Refresh VDP
+000016A8                            ; --------------------------------------------
+000016A8                            
+000016A8                            Vdp_Update:
+000016A8 41F9 FFFF EBAA             		lea	(RAM_VdpRegs),a0
+000016AE 323C 8000                  		move.w	#$8000,d1
+000016B2 7016                       		moveq	#$17-1,d0
+000016B4                            @Loop:
+000016B4 1218                       		move.b	(a0)+,d1
+000016B6 33C1 00C0 0004             		move.w	d1,($C00004).l
+000016BC 123C 0000                  		move.b	#0,d1
+000016C0 0641 0100                  		add.w	#$100,d1
+000016C4 51C8 FFEE                  		dbf	d0,@Loop
+000016C8 4E75                       		rts
+000016CA                            		
+000016CA                            ; --------------------------------------------
+000016CA                            ; VSync
+000016CA                            ; --------------------------------------------
+000016CA                            
+000016CA                            VSync:
+000016CA 08F9 0000 FFFF D008        		bset	#bitFrameWait,(RAM_VIntWait)
+000016D2                            @StillOn:
+000016D2 0839 0000 FFFF D008        		btst	#bitFrameWait,(RAM_VIntWait)
+000016DA 66F6                       		bne.s	@StillOn
+000016DC 4E75                       		rts
+000016DE                            		
+000016DE                            ; -----------------------------------------
+000016DE                            
+000016DE                            Vdp_RegData:
+000016DE 04                         		dc.b $04
+000016DF 64                         		dc.b $64
+000016E0 30                         		dc.b $30
+000016E1 34                         		dc.b $34
+000016E2 07                         		dc.b $07
+000016E3 7C                         		dc.b $7C
+000016E4 00                         		dc.b $00
+000016E5 00                         		dc.b $00
+000016E6 00                         		dc.b $00
+000016E7 00                         		dc.b $00
+000016E8 00                         		dc.b $00
+000016E9 03                         		dc.b $03		;Horizontal scroll type
+000016EA 81                         		dc.b $81
+000016EB 3F                         		dc.b $3F
+000016EC 00                         		dc.b $00
+000016ED 02                         		dc.b $02
+000016EE 01                         		dc.b $01
+000016EF 00                         		dc.b $00
+000016F0 00                         		dc.b $00
+000016F1 00                         		dc.b $00
+000016F2 00                         		dc.b $00
+000016F3 00                         		dc.b $00
+000016F4 00                         		dc.b $00
+000016F5 00                         		dc.b $00
+000016F6                            		even
+000016F6                            
+000016F6                            ; --------------------------------------------
+000016F6                            
+000016F6                            VDP_LineAddr:
+000016F6 0040 0000                  		dc.l $400000
+000016FA 0080 0000                  		dc.l $800000
+000016FE 0100 0000                  		dc.l $1000000
+00001702 0100 0000                  		dc.l $1000000
+00001706                            		even
+00001706                            		
+00001706                            ; ======================================================
+00001706                            ; *New routines for reading RAW data
+00001706                            ; from GIMP*
+00001706                            ; (.raw and .raw.pal)
+00001706                            ; ======================================================
+00001706                            	
+00001706                            ; ; --------------------------------------------
+00001706                            ; ; Vdp_RawToPal
+00001706                            ; ;
+00001706                            ; ; Input:
+00001706                            ; ; a0 - RAW pallete input
+00001706                            ; ; a1 - RAM pallete output
+00001706                            ; ; d0 | WORD - Length
+00001706                            ; ; 
+00001706                            ; ; Output:
+00001706                            ; ; none
+00001706                            ; ;
+00001706                            ; ; Uses:
+00001706                            ; ; d3-d6
+00001706                            ; ; --------------------------------------------
+00001706                            ; 
+00001706                            ; Vdp_RawToPal:		
+00001706                            ; 		moveq	#0,d3
+00001706                            ; 		move.w	d0,d3		;Length
+00001706                            ; 		moveq	#0,d4
+00001706                            ; 		move.w	d0,d4
+00001706                            ; 		lsr.w	#8,d4		;Start from
+00001706                            ; 		adda	d4,a0
+00001706                            ; 		adda 	d4,a1
+00001706                            ; @Next:
+00001706                            ; 		moveq	#0,d4
+00001706                            ; 		moveq	#0,d5
+00001706                            ; 		moveq	#0,d6
+00001706                            ; 		move.b	(a0)+,d4	;RED
+00001706                            ; 		move.b	(a0)+,d5	;GREEN
+00001706                            ; 		move.b	(a0)+,d6	;BLUE
+00001706                            ; 		lsr.w	#5,d4		;Convert to MD
+00001706                            ; 		lsl.w	#1,d4
+00001706                            ; 		lsr.w	#5,d5
+00001706                            ; 		lsl.w	#1,d5
+00001706                            ; 		lsr.w	#5,d6
+00001706                            ; 		lsl.w	#1,d6
+00001706                            ; 		lsl.w	#4,d5
+00001706                            ; 		add.w	d5,d4
+00001706                            ; 		lsl.w	#8,d6
+00001706                            ; 		add.w	d6,d4		;d4 - final MD color
+00001706                            ; 		move.w	d4,(a1)+
+00001706                            ; 		dbf	d3,@Next
+00001706                            ; 		rts
+00001706                            ; 		
+00001706                            ; ; --------------------------------------------
+00001706                            ; ; Vdp_RawToGfx
+00001706                            ; ;
+00001706                            ; ; Input:
+00001706                            ; ; a0 - RAW gfx input
+00001706                            ; ; d0 | LONG - VDP Address
+00001706                            ; ; d1 | WORD - Width
+00001706                            ; ; d2 | WORD - Height
+00001706                            ; ; 
+00001706                            ; ; Output:
+00001706                            ; ; none
+00001706                            ; ;
+00001706                            ; ; Uses:
+00001706                            ; ; d3-d6
+00001706                            ; ; --------------------------------------------
+00001706                            ; 
+00001706                            ; Vdp_RawToArt:
+00001706                            ; 		lsr.w	#3,d1
+00001706                            ; 		sub.w	#1,d1
+00001706                            ; 		sub.w	#1,d2
+00001706                            ; 		moveq	#0,d6
+00001706                            ; @LoopY:
+00001706                            ; 		move.l	d0,d3
+00001706                            ; 		move.w	d1,d4
+00001706                            ; 		swap	d6
+00001706                            ; @LoopX:
+00001706                            ; 		bsr	@GetLine
+00001706                            ; 		move.l	d3,($C00004)
+00001706                            ; 		move.l	d5,($C00000)
+00001706                            ; 		add.l	#$200000,d3
+00001706                            ; 
+00001706                            ; 		tst.l	d3
+00001706                            ; 		bpl.s	@Fine2
+00001706                            ; 		sub.l	#$40000000,d3
+00001706                            ; 		add.w	#1,d3
+00001706                            ; @Fine2:
+00001706                            ; 
+00001706                            ; 		dbf	d4,@LoopX
+00001706                            ; 		swap	d6
+00001706                            ; 		add.w	#1,d6
+00001706                            ; 
+00001706                            ; 		add.l	#$40000,d0
+00001706                            ; 		bsr	@FixAddr
+00001706                            ; 		cmp.w	#8,d6
+00001706                            ; 		blt.s	@NotEndCell
+00001706                            ; 		clr.w	d6
+00001706                            ; 		sub.l	#$200000,d0
+00001706                            ; 		bsr	@FixAddr
+00001706                            ; 
+00001706                            ; 		move.w	d1,d4
+00001706                            ; @FindNewCell:
+00001706                            ; 		add.l	#$200000,d0
+00001706                            ; 		bsr	@FixAddr
+00001706                            ; 		dbf	d4,@FindNewCell
+00001706                            ; 		
+00001706                            ; @NotEndCell:
+00001706                            ; 		dbf	d2,@LoopY
+00001706                            ; 		rts
+00001706                            ; 		
+00001706                            ; ; ---------------------------
+00001706                            ; 
+00001706                            ; @GetLine:
+00001706                            ; 		moveq	#0,d5
+00001706                            ; 		move.w	#0,d6
+00001706                            ; 		move.b	(a0)+,d6
+00001706                            ; 		and.b	#$F,d6
+00001706                            ; 		add.b	d6,d5
+00001706                            ; 		lsl.l	#4,d5
+00001706                            ; 		move.b	(a0)+,d6
+00001706                            ; 		and.b	#$F,d6
+00001706                            ; 		add.b	d6,d5
+00001706                            ; 		lsl.l	#4,d5
+00001706                            ; 		move.b	(a0)+,d6
+00001706                            ; 		and.b	#$F,d6
+00001706                            ; 		add.b	d6,d5
+00001706                            ; 		lsl.l	#4,d5
+00001706                            ; 		move.b	(a0)+,d6
+00001706                            ; 		and.b	#$F,d6
+00001706                            ; 		add.b	d6,d5
+00001706                            ;  		lsl.l	#4,d5
+00001706                            ;  		move.b	(a0)+,d6
+00001706                            ;  		and.b	#$F,d6
+00001706                            ;  		add.b	d6,d5
+00001706                            ;  		lsl.l	#4,d5
+00001706                            ;  		move.b	(a0)+,d6
+00001706                            ;  		and.b	#$F,d6
+00001706                            ;  		add.b	d6,d5
+00001706                            ;  		lsl.l	#4,d5
+00001706                            ;  		move.b	(a0)+,d6
+00001706                            ;  		and.b	#$F,d6
+00001706                            ;  		add.b	d6,d5
+00001706                            ;  		lsl.l	#4,d5
+00001706                            ;  		move.b	(a0)+,d6
+00001706                            ;  		and.b	#$F,d6
+00001706                            ;  		add.b	d6,d5
+00001706                            ; 		rts
+00001706                            ; 
+00001706                            ; ; ---------------------------
+00001706                            ; 
+00001706                            ; @FixAddr:
+00001706                            ; 		tst.l	d0
+00001706                            ; 		bpl.s	@Fine
+00001706                            ; 		sub.l	#$40000000,d0
+00001706                            ; 		add.w	#1,d0
+00001706                            ; @Fine:
+00001706                            ; 		rts
+00001706                            
+00001706                            ; --------------------------------------------
+00001706                            ; Vdp_RawAutoMap
+00001706                            ;
+00001706                            ; Input:
+00001706                            ; d0 | LONG - VDP Address
+00001706                            ; d1 | WORD - Width
+00001706                            ; d2 | WORD - Height
+00001706                            ; d3 | WORD - Start from this value
+00001706                            ; d4 | WORD - Horizontal size type (32,40,128)
+00001706                            ;
+00001706                            ; Output:
+00001706                            ; none
+00001706                            ;
+00001706                            ; Breaks:
+00001706                            ; d5
+00001706                            ; --------------------------------------------
+00001706                            		
+00001706                            Vdp_RawAutoMap:
+00001706 7A00                       		moveq	#0,d5
+00001708 DA43                       		add.w	d3,d5
+0000170A 3605                       		move.w	d5,d3
+0000170C                            
+0000170C 1839 FFFF EBBA             		move.b	(RAM_VdpRegs+vdpReg_PlnSize),d4
+00001712 0244 0003                  		and.w	#%00000011,d4
+00001716 E54C                       		lsl.w	#2,d4
+00001718 4BFA FFDC                  		lea	VDP_LineAddr(pc),a5
+0000171C 2835 4000                  		move.l	(a5,d4.w),d4		;Space
+00001720                            
+00001720                            @Loop_2:
+00001720 23C0 00C0 0004             		move.l	d0,($C00004)		;Set VDP location from d0
+00001726 3A01                       		move.w	d1,d5	  		;Move X-pos value to d3
+00001728                            @Loop:
+00001728 33C3 00C0 0000             		move.w	d3,($C00000)		;Put data
+0000172E 0643 0001                                  add.w	#1,d3
+00001732 51CD FFF4                  		dbf	d5,@Loop		;X-pos loop (from d1 to d3)
+00001736 D084                       		add.l	d4,d0                   ;Next line
+00001738 51CA FFE6                  		dbf	d2,@Loop_2		;Y-pos loop
+0000173C 4E75                       		rts
+0000173E                            		
+0000173E                            		
+0000173E                            		include	"engine/subs/fade.asm"
+0000173E                            ; =====================================================
+0000173E                            ; FadeIn/FadeOut
+0000173E                            ; =====================================================
+0000173E                            
+0000173E                            ; ---------------------------------------
+0000173E                            ; Equs
+0000173E                            ; ---------------------------------------
+0000173E                            
+0000173E                            ; PalFadeHint		equ	$50
+0000173E                            
+0000173E =01000000                  ID_FadeOut		equ	$01000000
+0000173E =02000000                  ID_FadeIn		equ	$02000000
+0000173E =03000000                  ID_ToWhite		equ	$03000000
+0000173E =04000000                  ID_FadeWhite		equ	$04000000
+0000173E                            
+0000173E                            ; ---------------------------------------
+0000173E                            
+0000173E =00000001                  PalFadeFlags		equ	1
+0000173E =00000002                  PalFadeStart		equ	2
+0000173E =00000003                  PalFadeEnd		equ	3
+0000173E =00000004                  PalFadeTmr		equ	4
+0000173E =00000008                  PalFadeSource		equ	8
+0000173E                            
+0000173E                            ; =====================================================
+0000173E                            
+0000173E                            PalFade:
+0000173E 4DF9 FFFF D88A             		lea	(RAM_RunFadeCol),a6
+00001744 0816 0007                  		btst	#7,(a6)
+00001748 6700                       		beq.s	@NotFinished
+0000174A 046E 0001 0006             		sub.w	#1,PalFadeTmr+2(a6)
+00001750 6A00 0000                  		bpl	@Return
+00001754 6000 0000                  		bra	@Finished
+00001758                            
+00001758                            @NotFinished:
+00001758 7000                       		moveq	#0,d0
+0000175A 1016                       		move.b	(a6),d0
+0000175C D040                       		add.w	d0,d0
+0000175E 323B 0000                  		move.w	@DoList(pc,d0.w),d1
+00001762 4EFB 1000                  		jmp	@DoList(pc,d1.w)
+00001766                            
+00001766                            ; =====================================================
+00001766                            
+00001766                            @DoList:
+00001766 0000                       		dc.w	@Return-@DoList
+00001768 0000                       		dc.w	@FadeOut-@DoList
+0000176A 0000                       		dc.w	@FadeIn-@DoList
+0000176C 0000                       		dc.w	@ToWhite-@DoList
+0000176E 0000                       		dc.w	@FromWhite-@DoList
+00001770                            		even
+00001770                            
+00001770                            ; =====================================================
+00001770                            ; ---------------------------------------------------
+00001770                            ; FadeOut
+00001770                            ; ---------------------------------------------------
+00001770                            
+00001770                            @FadeOut:
+00001770 046E 0001 0006             		sub.w	#1,PalFadeTmr+2(a6)
+00001776 6A00 0000                  		bpl	@Return
+0000177A 3D6E 0004 0006             		move.w	PalFadeTmr(a6),PalFadeTmr+2(a6)
+00001780                            
+00001780 41F9 FFFF E02A             		lea	(RAM_PalBuffer),a0
+00001786 43F9 FFFF EB2A             		lea	(RAM_PalBufferHint),a1
+0000178C                            
+0000178C 362E 0002                  		move.w	PalFadeStart(a6),d3
+00001790 3803                       		move.w	d3,d4
+00001792 E04C                       		lsr.w	#8,d4
+00001794 D0C4                       		adda	d4,a0
+00001796 D2C4                       		adda	d4,a1
+00001798                            
+00001798 3C3C 003F                  		move.w	#$3F,d6
+0000179C 7400                       		moveq	#0,d2
+0000179E                            @Next:
+0000179E 3010                       		move.w	(a0),d0
+000017A0 3200                       		move.w	d0,d1
+000017A2 0241 000F                  		and.w	#$F,d1
+000017A6 4A41                       		tst.w	d1
+000017A8 6700                       		beq.s	@RedLast
+000017AA 0400 0002                  		sub.b	#2,d0
+000017AE                            @RedLast:
+000017AE 3200                       		move.w	d0,d1
+000017B0 E849                       		lsr.w	#4,d1
+000017B2 0241 000F                  		and.w	#$F,d1
+000017B6 4A41                       		tst.w	d1
+000017B8 6700                       		beq.s	@GreenLast
+000017BA 0440 0020                  		sub.w	#$20,d0
+000017BE                            @GreenLast:
+000017BE 3200                       		move.w	d0,d1
+000017C0 E049                       		lsr.w	#8,d1
+000017C2 0241 000F                  		and.w	#$F,d1
+000017C6 4A41                       		tst.w	d1
+000017C8 6700                       		beq.s	@BlueLast
+000017CA 0440 0200                  		sub.w	#$200,d0
+000017CE                            @BlueLast:
+000017CE 4A40                       		tst.w	d0
+000017D0 6600 0000                  		bne.w	@NotBlack
+000017D4 0642 0001                  		add.w	#1,d2
+000017D8                            @NotBlack:
+000017D8 30C0                       		move.w	d0,(a0)+
+000017DA 32C0                       		move.w	d0,(a1)+
+000017DC 51CE FFC0                  		dbf	d6,@Next
+000017E0                            
+000017E0 7800                       		moveq	#0,d4
+000017E2 1803                       		move.b	d3,d4
+000017E4 B444                       		cmp.w	d4,d2
+000017E6 6D00 0000                  		blt	@Return
+000017EA                            
+000017EA 08D6 0007                  		bset	#7,(a6)
+000017EE 3D6E 0004 0006             		move.w	PalFadeTmr(a6),PalFadeTmr+2(a6)
+000017F4 4E75                       		rts
+000017F6                            
+000017F6                            ; =====================================================
+000017F6                            ; ---------------------------------------------------
+000017F6                            ; FadeIn
+000017F6                            ; ---------------------------------------------------
+000017F6                            
+000017F6                            @FadeIn:
+000017F6 046E 0001 0006             		sub.w	#1,PalFadeTmr+2(a6)
+000017FC 6A00 0000                  		bpl	@Return
+00001800 3D6E 0004 0006             		move.w	PalFadeTmr(a6),PalFadeTmr+2(a6)
+00001806                            
+00001806 41F9 FFFF E02A             		lea	(RAM_PalBuffer),a0
+0000180C 45F9 FFFF EB2A             		lea	(RAM_PalBufferHint),a2
+00001812 43F9 FFFF D8AA             		lea	(RAM_PalFadeBuff),a1
+00001818                            
+00001818 3E2E 0002                  		move.w	PalFadeStart(a6),d7
+0000181C 3807                       		move.w	d7,d4
+0000181E E04C                       		lsr.w	#8,d4
+00001820 D0C4                       		adda	d4,a0
+00001822 D4C4                       		adda	d4,a2
+00001824                            
+00001824 7C00                       		moveq	#0,d6
+00001826 1C2E 0003                  		move.b	PalFadeStart+1(a6),d6
+0000182A 7A00                       		moveq	#0,d5
+0000182C                            @Next_2:
+0000182C 3010                       		move.w	(a0),d0
+0000182E 3211                       		move.w	(a1),d1
+00001830 3400                       		move.w	d0,d2
+00001832 3601                       		move.w	d1,d3
+00001834 0242 000F                  		and.w	#$F,d2
+00001838 0243 000F                  		and.w	#$F,d3
+0000183C B443                       		cmp.w	d3,d2
+0000183E 6C00                       		bge.s	@RedFirst
+00001840 0640 0002                  		add.w	#2,d0
+00001844                            @RedFirst:
+00001844                            
+00001844 3400                       		move.w	d0,d2
+00001846 3601                       		move.w	d1,d3
+00001848 E84A                       		lsr.w	#4,d2
+0000184A E84B                       		lsr.w	#4,d3
+0000184C 0242 000F                  		and.w	#$F,d2
+00001850 0243 000F                  		and.w	#$F,d3
+00001854 B443                       		cmp.w	d3,d2
+00001856 6C00                       		bge.s	@GreenFirst
+00001858 0640 0020                  		add.w	#$20,d0
+0000185C                            @GreenFirst:
+0000185C                            
+0000185C 3400                       		move.w	d0,d2
+0000185E 3601                       		move.w	d1,d3
+00001860 E04A                       		lsr.w	#8,d2
+00001862 E04B                       		lsr.w	#8,d3
+00001864 0242 000F                  		and.w	#$F,d2
+00001868 0243 000F                  		and.w	#$F,d3
+0000186C B443                       		cmp.w	d3,d2
+0000186E 6C00                       		bge.s	@BlueFirst
+00001870 0640 0200                  		add.w	#$200,d0
+00001874                            @BlueFirst:	
+00001874 3400                       		move.w	d0,d2
+00001876 3211                       		move.w	(a1),d1
+00001878 B242                       		cmp.w	d2,d1
+0000187A 6600                       		bne.s	@NotEqual
+0000187C 0645 0001                  		add.w	#1,d5
+00001880                            @NotEqual:
+00001880 D2FC 0002                  		adda	#2,a1
+00001884 30C0                       		move.w	d0,(a0)+
+00001886 34C0                       		move.w	d0,(a2)+
+00001888 51CE FFA2                  		dbf	d6,@Next_2
+0000188C                            
+0000188C 0445 0001                  		sub.w	#1,d5
+00001890 3D45 0008                  		move.w	d5,PalFadeSource(a6)
+00001894                            
+00001894 7800                       		moveq	#0,d4
+00001896 7400                       		moveq	#0,d2
+00001898 142E 0003                  		move.b	PalFadeStart+1(a6),d2
+0000189C 1805                       		move.b	d5,d4
+0000189E B444                       		cmp.w	d4,d2
+000018A0 6E00 0000                  		bgt	@Return
+000018A4                            		
+000018A4 08D6 0007                  		bset	#7,(a6)
+000018A8 3D6E 0004 0006             		move.w	PalFadeTmr(a6),PalFadeTmr+2(a6)
+000018AE 4E75                       		rts
+000018B0                            
+000018B0                            ; =====================================================
+000018B0                            ; ---------------------------------------------------
+000018B0                            ; ToWhite
+000018B0                            ; ---------------------------------------------------
+000018B0                            
+000018B0                            @ToWhite:
+000018B0 41F9 FFFF E02A             		lea	(RAM_PalBuffer),a0
+000018B6 046E 0001 0006             		sub.w	#1,PalFadeTmr+2(a6)
+000018BC 6A00                       		bpl.s	@Return
+000018BE 3D6E 0004 0006             		move.w	PalFadeTmr(a6),PalFadeTmr+2(a6)
+000018C4                            
+000018C4 362E 0002                  		move.w	PalFadeStart(a6),d3
+000018C8                            
+000018C8 3C3C 003F                  		move.w	#$3F,d6
+000018CC 7400                       		moveq	#0,d2
+000018CE                            @NextW:
+000018CE 3010                       		move.w	(a0),d0
+000018D0 3200                       		move.w	d0,d1
+000018D2 0241 000F                  		and.w	#$F,d1
+000018D6 0C41 000E                  		cmp.w	#$E,d1
+000018DA 6700                       		beq.s	@RedLastW
+000018DC 0600 0002                  		add.b	#2,d0
+000018E0                            @RedLastW:
+000018E0 3200                       		move.w	d0,d1
+000018E2 E849                       		lsr.w	#4,d1
+000018E4 0241 000F                  		and.w	#$F,d1
+000018E8 0C41 000E                  		cmp.w	#$E,d1
+000018EC 6700                       		beq.s	@GreenLastW
+000018EE 0640 0020                  		add.w	#$20,d0
+000018F2                            @GreenLastW:
+000018F2 3200                       		move.w	d0,d1
+000018F4 E049                       		lsr.w	#8,d1
+000018F6 0241 000F                  		and.w	#$F,d1
+000018FA 0C41 000E                  		cmp.w	#$E,d1
+000018FE 6700                       		beq.s	@BlueLastW
+00001900 0640 0200                  		add.w	#$200,d0
+00001904                            @BlueLastW:
+00001904 0C40 0EEE                  		cmp.w	#$EEE,d0
+00001908 6D00 0000                  		blt.w	@NotWhite
+0000190C 0642 0001                  		add.w	#1,d2
+00001910                            @NotWhite:
+00001910 30C0                       		move.w	d0,(a0)+
+00001912 51CE FFBA                  		dbf	d6,@NextW
+00001916                            
+00001916 7800                       		moveq	#0,d4
+00001918 1803                       		move.b	d3,d4
+0000191A B444                       		cmp.w	d4,d2
+0000191C 6D00                       		blt.s	@Return
+0000191E                            		
+0000191E 08D6 0007                  		bset	#7,(a6)
+00001922 3D6E 0004 0006             		move.w	PalFadeTmr(a6),PalFadeTmr+2(a6)
+00001928 4E75                       		rts
+0000192A                            
+0000192A                            ; =====================================================
+0000192A                            ; ---------------------------------------------------
+0000192A                            ; FromWhite
+0000192A                            ; ---------------------------------------------------
+0000192A                            
+0000192A                            @FromWhite:
+0000192A 4216                       		clr.b	(a6)
+0000192C 4E75                       		rts
+0000192E                            
+0000192E                            ; =====================================================
+0000192E                            ; ---------------------------------------------------
+0000192E                            ; Subs
+0000192E                            ; ---------------------------------------------------
+0000192E                            
+0000192E                            @Finished:
+0000192E 3D6E 0004 0006              		move.w	PalFadeTmr(a6),PalFadeTmr+2(a6)
+00001934 4216                       		clr.b	(a6)
+00001936                            @Return:
+00001936 4E75                       		rts
+00001938                            
+00001938                            ; =====================================================
+00001938                            ; External
+00001938                            ; =====================================================
+00001938                            
+00001938                            PalFade_Set:
+00001938 48E7 0002                  		movem.l	a6,-(sp)
+0000193C 4DF9 FFFF D88A             		lea	(RAM_RunFadeCol),a6
+00001942                            
+00001942 2400                       		move.l	d0,d2
+00001944 2D41 0002                  		move.l	d1,PalFadeStart(a6)
+00001948 3D6E 0004 0006             		move.w	PalFadeTmr(a6),PalFadeTmr+2(a6)
+0000194E 4840                       		swap	d0
+00001950 E048                       		lsr.w	#8,d0
+00001952 1C80                       		move.b	d0,(a6)
+00001954 2002                       		move.l	d2,d0
+00001956                            
+00001956 4CDF 4000                  		movem.l	(sp)+,a6
+0000195A 4E75                       		rts
+0000195C                            		
+0000195C                            PalFade_Wait:
+0000195C 6100 FD6C                   		bsr	VSync
+00001960                            
+00001960 4A39 FFFF D88A             		tst.b	(RAM_RunFadeCol)
+00001966 66F4                       		bne.s	PalFade_Wait
+00001968 4E75                       		rts
+0000196A                            
+0000196A                            PalFade_Wait_Flag:
+0000196A 7CFF                        		moveq	#-1,d6
+0000196C 4A39 FFFF D88A             		tst.b	(RAM_RunFadeCol)
+00001972 6600                       		bne.s	@no
+00001974 7C00                       		moveq	#0,d6
+00001976                            @no:
+00001976 4A46                       		tst.w	d6
+00001978 4E75                       		rts
+0000197A                            		
+0000197A                            ; =====================================================
+0000197A                            ; MARS
+0000197A                            ; =====================================================
+0000197A                            
+0000197A                            ; PalFadeMars_Set:
+0000197A                            ;  		if MARS=1
+0000197A                            ;  		move.l	d0,d2
+0000197A                            ;  		cmp.l	#ID_FadeIn,d2
+0000197A                            ;  		bne.s	@NotFadeIn
+0000197A                            ;  
+0000197A                            ;  		move.w	d1,(marsreg+comm4)
+0000197A                            ;   		moveq	#M_PalFade_In,d0
+0000197A                            ;  		bsr	Mars_DoTask_Master
+0000197A                            ; @NotFadeIn:
+0000197A                            ;  		cmp.l	#ID_FadeOut,d2
+0000197A                            ;  		bne.s	@NotFadeOut
+0000197A                            ;  
+0000197A                            ;  		move.w	d1,(marsreg+comm4)
+0000197A                            ;   		moveq	#M_PalFade_Out,d0
+0000197A                            ;  		bsr	Mars_DoTask_Master
+0000197A                            ; @NotFadeOut:
+0000197A                            ;  		endif
+0000197A                            ; 		rts
+0000197A                            		
+0000197A                            		
+0000197A                            		include	"engine/subs/misc.asm"
+0000197A                            ; ====================================================================
+0000197A                            ; ---------------------------------------------
+0000197A                            ; Mode cleanup
+0000197A                            ; ---------------------------------------------
+0000197A                            
+0000197A                            Mode_Cleanup:
+0000197A 4DF9 FFFF E02A             		lea	(RAM_PalBuffer),a6
+00001980 303C 003F                  		move.w	#$3F,d0
+00001984                            @PalBuf:
+00001984 425E                       		clr.w	(a6)+
+00001986 51C8 FFFC                  		dbf	d0,@PalBuf
+0000198A                            
+0000198A 4DF9 FFFF DD2A             		lea	(RAM_VerBuffer),a6
+00001990 303C 001F                  		move.w	#(($7F)/4),d0
+00001994                            @VerBuf:
+00001994 429E                       		clr.l	(a6)+
+00001996 51C8 FFFC                  		dbf	d0,@VerBuf
+0000199A                            
+0000199A 4DF9 FFFF DDAA             		lea	(RAM_SprBuffer),a6
+000019A0 303C 007F                  		move.w	#$7F,d0
+000019A4                            @SprBuf:
+000019A4 429E                       		clr.l	(a6)+
+000019A6 51C8 FFFC                  		dbf	d0,@SprBuf
+000019AA                            
+000019AA 4DF9 FFFF D9AA             		lea	(RAM_HorBuffer),a6
+000019B0 303C 00DF                  		move.w	#(($37F)/4),d0
+000019B4                            @HorBuf:
+000019B4 429E                       		clr.l	(a6)+
+000019B6 51C8 FFFC                  		dbf	d0,@HorBuf
+000019BA                            
+000019BA 4E75                       		rts
+000019BC                            
+000019BC                            ; ; ====================================================================
+000019BC                            ; ; ---------------------------------------------
+000019BC                            ; ; Set new HBlank
+000019BC                            ; ; ---------------------------------------------
+000019BC                            ; 		
+000019BC                            ; MD_SetNewHint:
+000019BC                            ; 		tst.l	d0
+000019BC                            ; 		beq.s	@ClearHint
+000019BC                            ; 		bset	#2,(RAM_VIntWait)
+000019BC                            ; 		move.l	d0,(RAM_HIntAddr)
+000019BC                            ; 		move.w	#$8004,($C00004)
+000019BC                            ; 		rts
+000019BC                            ; @ClearHint:
+000019BC                            ; 		bclr	#2,(RAM_VIntWait)
+000019BC                            ; 		move.w	#$8004,($C00004)
+000019BC                            ; 		rts
+000019BC                            		
+000019BC                            ; ====================================================================
+000019BC                            ; ---------------------------------------------
+000019BC                            ; Generic data loaders
+000019BC                            ;
+000019BC                            ; NonVDP:
+000019BC                            ; a0 - Input
+000019BC                            ; a1 - Output
+000019BC                            ; d0 - Size (BYTE, WORD or LONG)
+000019BC                            ; ---------------------------------------------
+000019BC                            
+000019BC                            LoadData_Byte:
+000019BC 12D8                       		move.b	(a0)+,(a1)+
+000019BE 51C8 FFFC                  		dbf	d0,LoadData_Byte
+000019C2 4E75                       		rts
+000019C4                            
+000019C4                            LoadData_Word:
+000019C4 32D8                       		move.w	(a0)+,(a1)+
+000019C6 51C8 FFFC                  		dbf	d0,LoadData_Word
+000019CA 4E75                       		rts
+000019CC                            
+000019CC                            LoadData_Long:
+000019CC 22D8                       		move.l	(a0)+,(a1)+
+000019CE 51C8 FFFC                  		dbf	d0,LoadData_Long
+000019D2 4E75                       		rts
+000019D4                            		
+000019D4                            ; ====================================================================
+000019D4                            ; ---------------------------------------------
+000019D4                            ; RLE decompression
+000019D4                            ; byte $FF is end-of-data
+000019D4                            ;
+000019D4                            ; a0 - Input
+000019D4                            ; a1 - Output
+000019D4                            ; ---------------------------------------------
+000019D4                            
+000019D4                            RLE_decompress:
+000019D4 7000                       		moveq	#0,d0
+000019D6 7200                       		moveq	#0,d1
+000019D8 1018                       		move.b	(a0)+,d0
+000019DA 0C00 00FF                  		cmp.b	#-1,d0
+000019DE 6700 0000                  		beq	@Finish
+000019E2                            		
+000019E2 1218                       		move.b	(a0)+,d1
+000019E4                            @CopyIt:
+000019E4 12C1                       		move.b	d1,(a1)+
+000019E6 51C8 FFFC                  		dbf	d0,@CopyIt
+000019EA                            		
+000019EA 60E8                       		bra.s	RLE_decompress
+000019EC                            @Finish:
+000019EC 4E75                       		rts
+000019EE                            
+000019EE                            ; ====================================================================
+000019EE                            ; ---------------------------------------------
+000019EE                            ; CalcSine
+000019EE                            ;
+000019EE                            ; Input:
+000019EE                            ; d0 | WORD
+000019EE                            ;
+000019EE                            ; Output:
+000019EE                            ; d0 | WORD
+000019EE                            ; d1 | WORD
+000019EE                            ; ---------------------------------------------
+000019EE                            
+000019EE                            CalcSine:
+000019EE 0240 00FF                  		and.w	#$FF,d0
+000019F2 D040                       		add.w	d0,d0
+000019F4 0640 0080                  		add.w	#$80,d0
+000019F8 323B 0000                  		move.w	Sine_Data(pc,d0.w),d1
+000019FC 0440 0080                  		sub.w	#$80,d0
+00001A00 303B 0000                  		move.w	Sine_Data(pc,d0.w),d0
+00001A04 4E75                       		rts	
+00001A06                            
+00001A06                            Sine_Data:
+00001A06 0000 0006 000C 0012 0019+  		dc.w 0,	6, $C, $12, $19, $1F, $25, $2B,	$31, $38, $3E
+00001A1C 0044 004A 0050 0056 005C+  		dc.w $44, $4A, $50, $56, $5C, $61, $67,	$6D, $73, $78
+00001A30 007E 0083 0088 008E 0093+  		dc.w $7E, $83, $88, $8E, $93, $98, $9D,	$A2, $A7, $AB
+00001A44 00B0 00B5 00B9 00BD 00C1+  		dc.w $B0, $B5, $B9, $BD, $C1, $C5, $C9,	$CD, $D1, $D4
+00001A58 00D8 00DB 00DE 00E1 00E4+  		dc.w $D8, $DB, $DE, $E1, $E4, $E7, $EA,	$EC, $EE, $F1
+00001A6C 00F3 00F4 00F6 00F8 00F9+  		dc.w $F3, $F4, $F6, $F8, $F9, $FB, $FC,	$FD, $FE, $FE
+00001A80 00FF 00FF 00FF 0100 00FF+  		dc.w $FF, $FF, $FF, $100, $FF, $FF, $FF, $FE, $FE, $FD
+00001A94 00FC 00FB 00F9 00F8 00F6+  		dc.w $FC, $FB, $F9, $F8, $F6, $F4, $F3,	$F1, $EE, $EC
+00001AA8 00EA 00E7 00E4 00E1 00DE+  		dc.w $EA, $E7, $E4, $E1, $DE, $DB, $D8,	$D4, $D1, $CD
+00001ABC 00C9 00C5 00C1 00BD 00B9+  		dc.w $C9, $C5, $C1, $BD, $B9, $B5, $B0,	$AB, $A7, $A2
+00001AD0 009D 0098 0093 008E 0088+  		dc.w $9D, $98, $93, $8E, $88, $83, $7E,	$78, $73, $6D
+00001AE4 0067 0061 005C 0056 0050+  		dc.w $67, $61, $5C, $56, $50, $4A, $44,	$3E, $38, $31
+00001AF8 002B 0025 001F 0019 0012+  		dc.w $2B, $25, $1F, $19, $12, $C, 6, 0,	-6, -$C, -$12
+00001B0E FFE7 FFE1 FFDB FFD5 FFCF+  		dc.w -$19, -$1F, -$25, -$2B, -$31, -$38, -$3E, -$44, -$4A
+00001B20 FFB0 FFAA FFA4 FF9F FF99+  		dc.w -$50, -$56, -$5C, -$61, -$67, -$6D, -$75, -$78, -$7E
+00001B32 FF7D FF78 FF72 FF6D FF68+  		dc.w -$83, -$88, -$8E, -$93, -$98, -$9D, -$A2, -$A7, -$AB
+00001B44 FF50 FF4B FF47 FF43 FF3F+  		dc.w -$B0, -$B5, -$B9, -$BD, -$C1, -$C5, -$C9, -$CD, -$D1
+00001B56 FF2C FF28 FF25 FF22 FF1F+  		dc.w -$D4, -$D8, -$DB, -$DE, -$E1, -$E4, -$E7, -$EA, -$EC
+00001B68 FF12 FF0F FF0D FF0C FF0A+  		dc.w -$EE, -$F1, -$F3, -$F4, -$F6, -$F8, -$F9, -$FB, -$FC
+00001B7A FF03 FF02 FF02 FF01 FF01+  		dc.w -$FD, -$FE, -$FE, -$FF, -$FF, -$FF, -$100,	-$FF, -$FF
+00001B8C FF01 FF02 FF02 FF03 FF04+  		dc.w -$FF, -$FE, -$FE, -$FD, -$FC, -$FB, -$F9, -$F8, -$F6
+00001B9E FF0C FF0D FF0F FF12 FF14+  		dc.w -$F4, -$F3, -$F1, -$EE, -$EC, -$EA, -$E7, -$E4, -$E1
+00001BB0 FF22 FF25 FF28 FF2C FF2F+  		dc.w -$DE, -$DB, -$D8, -$D4, -$D1, -$CD, -$C9, -$C5, -$C1
+00001BC2 FF43 FF47 FF4B FF50 FF55+  		dc.w -$BD, -$B9, -$B5, -$B0, -$AB, -$A7, -$A2, -$9D, -$98
+00001BD4 FF6D FF72 FF78 FF7D FF82+  		dc.w -$93, -$8E, -$88, -$83, -$7E, -$78, -$75, -$6D, -$67
+00001BE6 FF9F FFA4 FFAA FFB0 FFB6+  		dc.w -$61, -$5C, -$56, -$50, -$4A, -$44, -$3E, -$38, -$31
+00001BF8 FFD5 FFDB FFE1 FFE7 FFEE+  		dc.w -$2B, -$25, -$1F, -$19, -$12, -$C,	-6, 0, 6, $C, $12
+00001C0E 0019 001F 0025 002B 0031+  		dc.w $19, $1F, $25, $2B, $31, $38, $3E,	$44, $4A, $50
+00001C22 0056 005C 0061 0067 006D+  		dc.w $56, $5C, $61, $67, $6D, $73, $78,	$7E, $83, $88
+00001C36 008E 0093 0098 009D 00A2+  		dc.w $8E, $93, $98, $9D, $A2, $A7, $AB,	$B0, $B5, $B9
+00001C4A 00BD 00C1 00C5 00C9 00CD+  		dc.w $BD, $C1, $C5, $C9, $CD, $D1, $D4,	$D8, $DB, $DE
+00001C5E 00E1 00E4 00E7 00EA 00EC+  		dc.w $E1, $E4, $E7, $EA, $EC, $EE, $F1,	$F3, $F4, $F6
+00001C72 00F8 00F9 00FB 00FC 00FD+  		dc.w $F8, $F9, $FB, $FC, $FD, $FE, $FE,	$FF, $FF, $FF
+00001C86                            		even
+00001C86                            		
+00001C86                            		
+00001C86                            		include	"engine/subs/joypads.asm"
+00001C86                            ; ====================================================================
+00001C86                            ; ---------------------------------------------
+00001C86                            ; Pads_Init
+00001C86                            ;
+00001C86                            ; Init joypads
+00001C86                            ; ---------------------------------------------
+00001C86                            
+00001C86                            		rsreset
+00001C86 =00000000                  CtrlID		rs.b	1
+00001C86 =00000001                  FightPad	rs.b	1
+00001C86 =00000002                  ExOnHold	rs.b	1		;MYXZ
+00001C86 =00000003                  OnHold		rs.b	1		;SACBRLDU
+00001C86 =00000004                  ExOnPress	rs.b	1
+00001C86 =00000005                  OnPress		rs.b	1
+00001C86 =00000010                  Port2		equ	$10
+00001C86                            
+00001C86 =00000003                  MousePress	equ	3
+00001C86 =00000004                  MouseX		equ	4
+00001C86 =00000005                  MouseY		equ	5
+00001C86                            
+00001C86 =00000001                  JoyUp		equ	%00000001
+00001C86 =00000002                  JoyDown		equ	%00000010
+00001C86 =00000004                  JoyLeft		equ	%00000100
+00001C86 =00000008                  JoyRight	equ	%00001000
+00001C86 =00000010                  JoyB		equ	%00010000
+00001C86 =00000020                  JoyC		equ	%00100000
+00001C86 =00000040                  JoyA		equ	%01000000
+00001C86 =00000080                  JoyStart	equ	%10000000
+00001C86 =00000000                  bitJoyUp	equ	0
+00001C86 =00000001                  bitJoyDown	equ	1
+00001C86 =00000002                  bitJoyLeft	equ	2
+00001C86 =00000003                  bitJoyRight	equ	3
+00001C86 =00000004                  bitJoyB		equ	4
+00001C86 =00000005                  bitJoyC		equ	5
+00001C86 =00000006                  bitJoyA		equ	6
+00001C86 =00000007                  bitJoyStart	equ	7
+00001C86                            
+00001C86 =00000001                  JoyZ		equ	%00000001
+00001C86 =00000002                  JoyY		equ	%00000010
+00001C86 =00000004                  JoyX		equ	%00000100
+00001C86 =00000008                  JoyMode		equ	%00001000
+00001C86 =00000000                  bitJoyZ		equ	0
+00001C86 =00000001                  bitJoyY		equ	1
+00001C86 =00000002                  bitJoyX		equ	2
+00001C86 =00000003                  bitJoyMode	equ	3
+00001C86                            
+00001C86                            ; --------------------------------------------
+00001C86                            ; Pads_Init
+00001C86                            ; --------------------------------------------
+00001C86                            
+00001C86                            Pads_Init:
+00001C86 33FC 0100 00A1 1100        		move.w	#$100,($A11100)
+00001C8E 33FC 0100 00A1 1200        		move.w	#$100,($A11200)
+00001C96                            @WaitZ80:
+00001C96 0839 0000 00A1 1100        		btst	#0,($A11100)
+00001C9E 66F6                        		bne.s	@WaitZ80
+00001CA0                             
+00001CA0 7240                       		moveq	#$40,d1
+00001CA2 13C1 00A1 0009             		move.b	d1,($A10009).l
+00001CA8 13C1 00A1 000B             		move.b	d1,($A1000B).l
+00001CAE 13C1 00A1 000D             		move.b	d1,($A1000D).l
+00001CB4                            
+00001CB4 33FC 0000 00A1 1100        		move.w	#0,($A11100).l
+00001CBC 4E75                       		rts
+00001CBE                            
+00001CBE                            ; --------------------------------------------
+00001CBE                            ; Pads_Read
+00001CBE                            ; --------------------------------------------
+00001CBE                            
+00001CBE                            Pads_Read:
+00001CBE 33FC 0100 00A1 1100        		move.w	#$100,($A11100)
+00001CC6 33FC 0100 00A1 1200        		move.w	#$100,($A11200)
+00001CCE                            @WaitZ80:
+00001CCE 0839 0000 00A1 1100        		btst	#0,($A11100)
+00001CD6 66F6                        		bne.s	@WaitZ80
+00001CD8                            
+00001CD8 43F9 FFFF D00A             		lea	(RAM_Joypads),a1
+00001CDE 7000                       		moveq	#0,d0
+00001CE0 6100                       		bsr.s	@DoIt
+00001CE2 43F9 FFFF D01A             		lea	(RAM_Joypads+Port2),a1
+00001CE8 7001                       		moveq	#1,d0
+00001CEA 6100                       		bsr.s	@DoIt
+00001CEC                            
+00001CEC 33FC 0000 00A1 1100        		move.w	#0,($A11100).l
+00001CF4 4E75                       		rts
+00001CF6                            
+00001CF6                            ; ---------------------------------------
+00001CF6                            
+00001CF6                            @DoIt:
+00001CF6 41F9 00A1 0003             		lea	($A10003).l,a0
+00001CFC D040                       		add.w	d0,d0			;1+1=2
+00001CFE D0C0                       		add.w	d0,a0			;Add result to port
+00001D00 6100 0000                  		bsr	@FindJoypad
+00001D04 1280                       		move.b	d0,(a1)
+00001D06                            
+00001D06 0C00 000F                                  cmp.b	#$F,d0
+00001D0A 6700 0000                                  beq	@End
+00001D0E 0C00 000D                  		cmp.b	#$D,d0
+00001D12 6700 0000                                  beq	@Controller
+00001D16 0C00 0007                    		cmp.b	#7,d0
+00001D1A 6700 0000                                  beq	@Multitap
+00001D1E 0C00 0003                  		cmp.b	#3,d0
+00001D22 6700 0000                                  beq	@Mouse
+00001D26                            
+00001D26                            @End:
+00001D26 4E75                       		rts
+00001D28                            
+00001D28                            ; ------------------------------------
+00001D28                            ; Controller
+00001D28                            ; ------------------------------------
+00001D28                            
+00001D28                            @Controller:
+00001D28 117C 0040 0006             		move.b	#$40,6(a0)
+00001D2E 4E71                       		nop
+00001D30 4E71                       		nop
+00001D32 10BC 0040                  		move.b	#$40,(a0)		; Show CB|RLDU
+00001D36 4E71                       		nop
+00001D38 4E71                       		nop
+00001D3A 10BC 0000                  		move.b	#$00,(a0)		; Show SA|RLDU
+00001D3E 4E71                       		nop
+00001D40 4E71                       		nop
+00001D42 10BC 0040                  		move.b	#$40,(a0)		; Show CB|RLDU
+00001D46 4E71                       		nop
+00001D48 4E71                       		nop
+00001D4A 10BC 0000                  		move.b	#$00,(a0)		; Show SA|RLDU
+00001D4E 4E71                       		nop
+00001D50 4E71                       		nop
+00001D52 10BC 0040                  		move.b	#$40,(a0)		; "Okay OKAY!, I have more buttons"
+00001D56 4E71                       		nop
+00001D58 4E71                       		nop
+00001D5A 1010                       		move.b	(a0),d0
+00001D5C 10BC 0000                   		move.b	#$00,(a0)		; "Heres my ID"
+00001D60 4E71                         		nop
+00001D62 4E71                         		nop
+00001D64 1210                        		move.b	(a0),d1
+00001D66 10BC 0040                   		move.b	#$40,(a0)
+00001D6A 4E71                        		nop
+00001D6C 4E71                        		nop
+00001D6E                            		
+00001D6E 7400                       		moveq	#0,d2
+00001D70 0241 000F                  		and.w	#$F,d1
+00001D74 0C41 000F                  		cmp.w	#$F,d1
+00001D78 6600                       		bne.s	@Original
+00001D7A                            		
+00001D7A 7401                       		moveq	#1,d2
+00001D7C 7200                        		moveq	#0,d1
+00001D7E 1229 0002                   		move.b	ExOnHold(a1),d1
+00001D82 4601                       		not.b	d1
+00001D84                            ;  		and.w	#$F,d2
+00001D84                            ;  		move.b	d2,d1
+00001D84 B101                        		eor.b	d0,d1
+00001D86                            ;  		move.b	d0,d2
+00001D86 C200                        		and.b	d0,d1
+00001D88 0241 000F                   		and.w	#$F,d1
+00001D8C 1341 0004                   		move.b	d1,ExOnPress(a1)
+00001D90                            ;  		move.b	d2,d0
+00001D90 4600                        		not.b	d0
+00001D92 0240 000F                   		and.w	#$F,d0
+00001D96 1340 0002                   		move.b	d0,ExOnHold(a1)
+00001D9A                             		
+00001D9A                            @Original:	
+00001D9A 1342 0001                  		move.b	d2,FightPad(a1)
+00001D9E                            	
+00001D9E 10BC 0000                  		move.b	#0,(a0)
+00001DA2 4E71                       		nop
+00001DA4 4E71                       		nop
+00001DA6 1010                       		move.b	(a0),d0
+00001DA8 E508                       		lsl.b	#2,d0
+00001DAA 0200 00C0                  		and.b	#$C0,d0	
+00001DAE 10BC 0040                  		move.b	#$40,(a0)
+00001DB2 4E71                       		nop
+00001DB4 4E71                       		nop
+00001DB6 1210                       		move.b	(a0),d1
+00001DB8 0201 003F                  		and.b	#$3F,d1
+00001DBC 8001                       		or.b	d1,d0
+00001DBE 4600                       		not.b	d0
+00001DC0 1229 0003                  		move.b	OnHold(a1),d1
+00001DC4 B101                       		eor.b	d0,d1
+00001DC6 1340 0003                  		move.b	d0,OnHold(a1)
+00001DCA C200                       		and.b	d0,d1
+00001DCC 1341 0005                  		move.b	d1,OnPress(a1)
+00001DD0 4E75                       		rts
+00001DD2                            
+00001DD2                            ; ------------------------------------
+00001DD2                            ; Multitap
+00001DD2                            ; ------------------------------------
+00001DD2                            
+00001DD2                            @Multitap:
+00001DD2 6000 FF52                  		bra	@End
+00001DD6                            
+00001DD6                            ; ------------------------------------
+00001DD6                            ; Sega Mega Mouse
+00001DD6                            ;
+00001DD6                            ; in: d1 - port number
+00001DD6                            ; out: d0 - status
+00001DD6                            ;      d2
+00001DD6                            ; ------------------------------------
+00001DD6                            
+00001DD6                            @Mouse:
+00001DD6 7200                       		moveq	#0,d1
+00001DD8 6100 0000                  		bsr	@ReadIt
+00001DDC 2342 0002                  		move.l	d2,2(a1)
+00001DE0 6000 FF44                  		bra	@End
+00001DE4                            
+00001DE4                            @ReadIt:
+00001DE4 48E7 5980                  		movem.l	d1/d3/d4/d7/a0,-(sp)
+00001DE8                            
+00001DE8 7000                       		moveq	#0,d0			;Error flag
+00001DEA 0C41 0002                  		cmp.w	#2,d1			;Control ID < 2?
+00001DEE 6200 0000                  		bhi	@Error
+00001DF2 D241                       		add.w	d1,d1
+00001DF4                            	;	lea	($A10003),a0
+00001DF4                            @Connect:
+00001DF4 117C 0060 0006             		move.b	#$60,6(a0)
+00001DFA 4E71                                       nop
+00001DFC 4E71                                       nop
+00001DFE 10BC 0060                                  move.b	#$60,(a0)		;TH,TR=11 (END DATA)
+00001E02 7400                                       moveq	#0,d2
+00001E04 7600                                       moveq	#0,d3
+00001E06                            @NotReady:
+00001E06 0810 0004                   		btst	#4,(a0)
+00001E0A 67FA                        		beq.s	@NotReady
+00001E0C 1810                        		move.b	(a0),d4			;d4.b = ? 1 1 1 | 0 0 0
+00001E0E 0204 000F                   		and.b	#$F,d4
+00001E12 4A04                        		tst.b	d4
+00001E14 6600 0000                   		bne	@Error			;No mouse
+00001E18 10BC 0020                   		move.b	#$20,(a0)		;Select t1 m1 1 1
+00001E1C 3E3C 00FE                   		move.w	#$FE,d7
+00001E20                            @lp1:
+00001E20 0810 0004                  		btst.b	#4,(a0)
+00001E24 6600                       		bne.s	@Mouse_10
+00001E26 51CF FFF8                  		dbra	d7,@lp1
+00001E2A 6000 0000                  		bra	@Error
+00001E2E                            		
+00001E2E                            @Mouse_10:
+00001E2E 1010                       		move.b	(a0),d0			;d0 = xxxx|xxxx|xxxx|t1 m1 1 1
+00001E30 E148                       		lsl.w	#8,d0			;d0 = xxxx|t1 m1 1 1|0000|0000
+00001E32 10BC 0000                  		move.b	#0,(a0)
+00001E36 4E71                       		nop
+00001E38                            @lp2:
+00001E38 0810 0004                  		btst	#4,(a0)
+00001E3C 6700                       		beq.s	@Mouse_20
+00001E3E 51CF FFF8                  		dbra	d7,@lp2
+00001E42 6000 0000                  		bra	@Error
+00001E46                            		
+00001E46                            @Mouse_20:
+00001E46 1610                       		move.b	(a0),d3
+00001E48 10BC 0020                  		move.b	#$20,(a0)
+00001E4C E14B                       		lsl.w	#8,d3
+00001E4E                            @lp3:
+00001E4E 0810 0004                  		btst	#4,(a0)
+00001E52 6600                       		bne.s	@Mouse_30
+00001E54 51CF FFF8                  		dbra	d7,@lp3
+00001E58 6000 0000                  		bra	@Error
+00001E5C                            		
+00001E5C                            @Mouse_30:
+00001E5C 1610                       		move.b	(a0),d3
+00001E5E E90B                       		lsl.b	#4,d3
+00001E60 E84B                       		lsr.w	#4,d3
+00001E62 10BC 0000                  		move.b	#0,(a0)
+00001E66 8043                       		or.w	d3,d0
+00001E68 7600                       		moveq	#0,d3
+00001E6A                            @lp4:
+00001E6A 0810 0004                  		btst	#4,(a0)
+00001E6E 6700                                       beq.s	@Mouse_40
+00001E70 51CF FFF8                                  dbra	d7,@lp4
+00001E74 6000 0000                                  bra	@Error
+00001E78                            
+00001E78                            @Mouse_40:
+00001E78 1410                       		move.b	(a0),d2
+00001E7A 10BC 0020                  		move.b	#$20,(a0)
+00001E7E E14A                       		lsl.w	#8,d2
+00001E80                            @lp5:
+00001E80 0810 0004                  		btst	#4,(a0)
+00001E84 6600                       		bne.s	@Mouse_50
+00001E86 51CF FFF8                  		dbra	d7,@lp5
+00001E8A 6000 0000                  		bra	@Error
+00001E8E                            		
+00001E8E                            @Mouse_50:
+00001E8E 1410                       		move.b	(a0),d2
+00001E90 10BC 0000                  		move.b	#0,(a0)
+00001E94 E90A                       		lsl.b	#4,d2
+00001E96 E94A                       		lsl.w	#4,d2
+00001E98                            @lp6:
+00001E98 0810 0004                  		btst	#4,(a0)
+00001E9C 6700                       		beq.s	@Mouse_60
+00001E9E 51CF FFF8                  		dbra	d7,@lp6
+00001EA2 6000 0000                  		bra	@Error
+00001EA6                            
+00001EA6                            @Mouse_60:
+00001EA6 1410                       		move.b	(a0),d2
+00001EA8 10BC 0020                  		move.b	#$20,(a0)
+00001EAC E90A                       		lsl.b	#4,d2
+00001EAE E98A                       		lsl.l	#4,d2
+00001EB0                            @lp7:
+00001EB0 0810 0004                  		btst	#4,(a0)
+00001EB4 6600                       		bne.s	@Mouse_70
+00001EB6 51CF FFF8                  		dbra	d7,@lp7
+00001EBA 6000                       		bra.s	@Error
+00001EBC                            
+00001EBC                            @Mouse_70:
+00001EBC 1410                       		move.b	(a0),d2
+00001EBE 10BC 0000                  		move.b	#0,(a0)
+00001EC2 E90A                       		lsl.b	#4,d2
+00001EC4 E98A                       		lsl.l	#4,d2
+00001EC6                            @lp8:
+00001EC6 0810 0004                  		btst	#4,(a0)
+00001ECA 6700                       		beq.s	@Mouse_80
+00001ECC 51CF 0000                  		dbra	d7,@Mouse_80
+00001ED0 6000                       		bra.s	@Error
+00001ED2                            
+00001ED2                            @Mouse_80:
+00001ED2 1410                       		move.b	(a0),d2
+00001ED4 10BC 0020                  		move.b	#$20,(a0)
+00001ED8 E90A                       		lsl.b	#4,d2
+00001EDA E98A                       		lsl.l	#4,d2
+00001EDC                            @lp9:
+00001EDC 0810 0004                  		btst	#4,(a0)
+00001EE0 6700                       		beq.s	@Mouse_90
+00001EE2 51CF FFF8                  		dbra	d7,@lp9
+00001EE6 6000                       		bra.s	@Error
+00001EE8                            
+00001EE8                            @Mouse_90:
+00001EE8 1410                       		move.b	(a0),d2
+00001EEA 10BC 0060                  		move.b	#$60,(a0)
+00001EEE E90A                       		lsl.b	#4,d2
+00001EF0 E88A                       		lsr.l	#4,d2
+00001EF2                            @lp10:
+00001EF2 0810 0004                  		btst	#4,(a0)
+00001EF6 67FA                       		beq.s	@lp10
+00001EF8 0082 0000 0000             		or.l	#0,d2
+00001EFE                            @Exit:
+00001EFE 33FC 0000 00A1 1100        		move.w	#0,($A11100)
+00001F06 4CDF 019A                  		movem.l	(sp)+,d1/d3/d4/d7/a0
+00001F0A 4E75                       		rts
+00001F0C                            
+00001F0C                            @Error:
+00001F0C 10BC 0060                  		move.b	#$60,(a0)
+00001F10 4E71                       		nop
+00001F12 4E71                       		nop
+00001F14                            @erlp:
+00001F14 10BC 0004                  		move.b	#4,(a0)
+00001F18 67FA                       		beq.s	@erlp
+00001F1A 0082 8000 0000             		or.l	#$80000000,d2
+00001F20 7000                       		moveq	#0,d0
+00001F22 33FC 0000 00A1 1100        		move.w	#0,($A11100)
+00001F2A 4CDF 019A                  		movem.l	(sp)+,d1/d3/d4/d7/a0
+00001F2E 4E75                       		rts
+00001F30                            
+00001F30                            ; ------------------------------------
+00001F30                            ; d0.w
+00001F30                            ; $0F - Nothing
+00001F30                            ; $0D - Controller
+00001F30                            ; $07 - Multitap
+00001F30                            ; $03 - Mouse
+00001F30                            ;
+00001F30                            ; d1.l
+00001F30                            ; $00xx00yy - Key presses
+00001F30                            ; ------------------------------------
+00001F30                            
+00001F30                            @FindJoypad:
+00001F30 7000                       		moveq	#0,d0
+00001F32 10BC 0070                  		move.b	#$70,(a0)
+00001F36 6100                       		bsr.s	@GetPress
+00001F38 4841                       		swap	d1
+00001F3A 10BC 0030                  		move.b	#$30,(a0)
+00001F3E D040                       		add.w	d0,d0
+00001F40                            
+00001F40                            @GetPress:
+00001F40 1210                       		move.b	(a0),d1
+00001F42 1401                       		move.b	d1,d2
+00001F44 0202 000C                  		and.b	#$C,d2
+00001F48 6700                       		beq.s	@Nope1
+00001F4A 5240                       		addq.w	#1,d0
+00001F4C                            
+00001F4C                            @Nope1:
+00001F4C D040                       		add.w	d0,d0
+00001F4E 1601                       		move.b	d1,d3
+00001F50 0243 0003                  		and.w	#3,d3
+00001F54 6700                       		beq.s	@Nope2
+00001F56 5240                       		addq.w	#1,d0
+00001F58                            
+00001F58                            @Nope2:
+00001F58 4E75                       		rts
+00001F58 4E75                       		rts
+00001F5A                            		include	"engine/subs/dma.asm"
+00001F5A                            ; =====================================================================================
+00001F5A                            ; DMA
+00001F5A                            ; =====================================================================================
+00001F5A                            
+00001F5A                            ; -----------------------------------
+00001F5A                            ; Read
+00001F5A                            ; -----------------------------------
+00001F5A                            
+00001F5A                            DMA_Read:
+00001F5A 43F9 FFFF D48A             		lea	(RAM_DMA_Buffer),a1
+00001F60 D2F9 FFFF D886             		adda	(RAM_DMA_Buffer+(sizeof_dmabuff-4)),a1
+00001F66                            @Next:
+00001F66 4A51                       		tst.w	(a1)
+00001F68 6700                       		beq.s	@EndRead
+00001F6A                            		
+00001F6A 34BC 8174                  		move.w	#$8174,(a2)
+00001F6E                            
+00001F6E 2499                       		move.l	(a1)+,(a2)
+00001F70 2499                       		move.l	(a1)+,(a2)
+00001F72 3499                       		move.w	(a1)+,(a2)
+00001F74 3A19                       		move.w	(a1)+,d5
+00001F76 EB4D                       		lsl.w	#5,d5
+00001F78 0285 0000 FFFF             		and.l	#$FFFF,d5
+00001F7E E58D                       		lsl.l	#2,d5
+00001F80 E44D                       		lsr.w	#2,d5
+00001F82 4845                       		swap	d5
+00001F84 0085 4000 0080             		ori.l	#$40000080,d5
+00001F8A 2485                       		move.l	d5,(a2)
+00001F8C                            		
+00001F8C 60D8                       		bra.s	@Next
+00001F8E                            
+00001F8E                            @EndRead:
+00001F8E 34BC 8164                  		move.w	#$8164,(a2)
+00001F92 4E75                       		rts
+00001F94                            
+00001F94                            ; -----------------------------------
+00001F94                            ; Set new
+00001F94                            ; -----------------------------------
+00001F94                            
+00001F94                            DMA_Set:
+00001F94 47F9 FFFF D48A             		lea	(RAM_DMA_Buffer),a3
+00001F9A D6F9 FFFF D886             		adda	(RAM_DMA_Buffer+(sizeof_dmabuff-4)),a3
+00001FA0                            
+00001FA0 303C 9300                  		move.w	#$9300,d0
+00001FA4 1003                       		move.b	d3,d0
+00001FA6 36C0                       		move.w	d0,(a3)+
+00001FA8 303C 9400                  		move.w	#$9400,d0
+00001FAC E04B                       		lsr.w	#8,d3
+00001FAE 1003                       		move.b	d3,d0
+00001FB0 36C0                       		move.w	d0,(a3)+
+00001FB2                            
+00001FB2                            		
+00001FB2 303C 9500                  		move.w	#$9500,d0
+00001FB6 E28A                       		lsr.l	#1,d2
+00001FB8 1002                       		move.b	d2,d0
+00001FBA 36C0                       		move.w	d0,(a3)+
+00001FBC 303C 9600                  		move.w	#$9600,d0
+00001FC0 E08A                       		lsr.l	#8,d2
+00001FC2 1002                       		move.b	d2,d0
+00001FC4 36C0                       		move.w	d0,(a3)+
+00001FC6 303C 9700                  		move.w	#$9700,d0
+00001FCA E08A                       		lsr.l	#8,d2
+00001FCC 1002                       		move.b	d2,d0
+00001FCE 36C0                       		move.w	d0,(a3)+
+00001FD0 36C4                       		move.w	d4,(a3)+
+00001FD2                            
+00001FD2 33CB FFFF D886             		move.w	a3,(RAM_DMA_Buffer+(sizeof_dmabuff-4))
+00001FD8 B7FC FFFF D684             		cmpa.l	#RAM_DMA_Buffer+$1FA,a3
+00001FDE 6E00                       		bgt.s	@Free
+00001FE0 36BC 0000                  		move.w	#0,(a3)		
+00001FE4                            @Free:		
+00001FE4 0479 D48A FFFF D886        		sub.w	#(RAM_DMA_Buffer&$FFFF),(RAM_DMA_Buffer+(sizeof_dmabuff-4))
+00001FEC                            		
+00001FEC                            @Return:
+00001FEC 4E75                       		rts
+00001FEE                            
+00001FEE                            ; -----------------------------------
+00001FEE                            ; Reset
+00001FEE                            ; -----------------------------------
+00001FEE                            
+00001FEE                            DMA_Reset:
+00001FEE 4279 FFFF D886             		clr.w	(RAM_DMA_Buffer+(sizeof_dmabuff-4))
+00001FF4 34BC 8164                  		move.w	#$8164,(a2)
+00001FF8 4E75                       		rts
+00001FFA                            
+00001FFA                            ; -----------------------------------
+00001FFA                            ; Quick set
+00001FFA                            ; 
+00001FFA                            ; d0 - Destiantion
+00001FFA                            ; d1 - Source
+00001FFA                            ; d2 - Size
+00001FFA                            ; -----------------------------------
+00001FFA                            
+00001FFA                            DMA_QuickSet:
+00001FFA 48E7 0060                  		movem.l	a1-a2,-(sp)
+00001FFE 2241                       		move.l	d1,a1
+00002000                            ;  		addq.l	#2,d1
+00002000 E281                       		asr.l	#1,d1
+00002002 45F9 00C0 0004              		lea	($C00004).l,a2
+00002008 34BC 8F02                  		move.w	#$8F02,(a2)
+0000200C 363C 8164                  		move.w	#$8164,d3
+00002010 08C3 0004                  		bset	#4,d3
+00002014 3483                       		move.w	d3,(a2)
+00002016 263C 0094 0000             		move.l	#$940000,d3
+0000201C 3602                       		move.w	d2,d3
+0000201E E18B                       		lsl.l	#8,d3
+00002020 363C 9300                  		move.w	#$9300,d3
+00002024 1602                       		move.b	d2,d3
+00002026 2483                       		move.l	d3,(a2)
+00002028 263C 0096 0000             		move.l	#$960000,d3
+0000202E 3601                       		move.w	d1,d3
+00002030 E18B                       		lsl.l	#8,d3
+00002032 363C 9500                  		move.w	#$9500,d3
+00002036 1601                       		move.b	d1,d3
+00002038 2483                       		move.l	d3,(a2)
+0000203A 4841                       		swap	d1
+0000203C 363C 9700                  		move.w	#$9700,d3
+00002040 1601                       		move.b	d1,d3
+00002042 3483                       		move.w	d3,(a2)
+00002044 0080 4000 0080             		or.l	#$40000080,d0
+0000204A 4840                       		swap	d0
+0000204C 3480                       		move.w	d0,(a2)
+0000204E 4840                       		swap	d0
+00002050 3F00                       		move.w	d0,-(sp)
+00002052 349F                       		move.w	(sp)+,(a2)
+00002054 34BC 8164                  		move.w	#$8164,(a2)
+00002058 0240 FF7F                  		and.w	#$FF7F,d0
+0000205C 2480                       		move.l	d0,(a2)
+0000205E 2551 FFFC                  		move.l	(a1),-4(a2)
+00002062 34BC 8F02                  		move.w	#$8F02,(a2)
+00002066 4CDF 0600                  		movem.l	(sp)+,a1-a2
+0000206A 4E75                       		rts
+0000206C                            		
+0000206C                            ; -----------------------------------
+0000206C                            ; Wait DMA
+0000206C                            ; -----------------------------------
+0000206C                            
+0000206C                            DMA_Wait:
+0000206C 3039 00C0 0004             		move.w	($C00004),d0
+00002072 0800 0001                  		btst	#1,d0
+00002076 66F4                       		bne.s	DMA_Wait
+00002078 4E75                       		rts		
+0000207A                            
+0000207A                            
+0000207A                                            include	"engine/ints.asm"
+0000207A                            ; ====================================================================
+0000207A                            ; -------------------------------------------------
+0000207A                            ; VBlank
+0000207A                            ; 
+0000207A                            ; all registers available
+0000207A                            ; -------------------------------------------------
+0000207A                            
+0000207A                            MD_Vint:
+0000207A 4AB9 FFFF D000             		tst.l	(RAM_VIntAddr)
+00002080 6700                       		beq.s	@NoVIntEx
+00002082                            		
+00002082 48E7 FFFE                  		movem.l	a0-a6/d0-d7,-(sp)
+00002086 2079 FFFF D000             		movea.l	(RAM_VIntAddr),a0
+0000208C 4E90                       		jsr	(a0)
+0000208E 4CDF 7FFF                  		movem.l	(sp)+,a0-a6/d0-d7
+00002092                            @NoVIntEx:
+00002092 08F9 0001 FFFF D008        		bset	#1,(RAM_VIntWait)
+0000209A 08B9 0000 FFFF D008        		bclr	#bitFrameWait,(RAM_VIntWait)
+000020A2 4E73                       		rte
+000020A4                            
+000020A4                            ; ====================================================================
+000020A4                            ; -------------------------------------------------
+000020A4                            ; HBlank
+000020A4                            ; 
+000020A4                            ; ONLY available registers:
+000020A4                            ; a0-a3
+000020A4                            ; d0-d4
+000020A4                            ; -------------------------------------------------
+000020A4                            
+000020A4                            MD_Hint:		
+000020A4 4AB9 FFFF D004              		tst.l	(RAM_HIntAddr)
+000020AA 6700                        		beq.s	@NoHintEx
+000020AC                             		
+000020AC 48E7 F8F0                   		movem.l	a0-a3/d0-d4,-(sp)
+000020B0 2079 FFFF D004              		movea.l	(RAM_HIntAddr),a0
+000020B6 4E90                        		jsr	(a0)
+000020B8 4CDF 0F1F                   		movem.l	(sp)+,a0-a3/d0-d4
+000020BC                            @NoHintEx:
+000020BC 4E73                       		rte
+000020BE                            		
+000020BE                            ; ====================================================================
+000020BE                            ; -------------------------------------------------
+000020BE                            ; Separate routines
+000020BE                            ; -------------------------------------------------
+000020BE                            
+000020BE                            VInt_Default:
+000020BE 6100 F67E                  		bsr	PalFade
+000020C2 6100 FBFA                  		bsr	Pads_Read
+000020C6 6100 FE92                  		bsr	DMA_Read
+000020CA                            ; 		bsr	SMEG_Upd
+000020CA                            			
+000020CA 41F9 FFFF E02A             		lea	(RAM_PalBuffer),a0
+000020D0 23FC C000 0000 00C0 0004    		move.l	#$C0000000,($C00004).l
+000020DA 303C 003F                   		move.w	#$3F,d0
+000020DE                            @PalBuf:
+000020DE 33D8 00C0 0000             		move.w	(a0)+,($C00000).l
+000020E4 51C8 FFF8                   		dbf	d0,@PalBuf
+000020E8                            
+000020E8 41F9 FFFF DDAA             		lea	(RAM_SprBuffer),a0
+000020EE 23FC 7800 0003 00C0 0004   		move.l	#$78000003,($C00004).l
+000020F8 303C 009F                  		move.w	#$9F,d0
+000020FC                            @SprBuf:
+000020FC 23D8 00C0 0000             		move.l	(a0)+,($C00000).l
+00002102 51C8 FFF8                  		dbf	d0,@SprBuf
+00002106                            		
+00002106 41F9 FFFF DD2A             		lea	(RAM_VerBuffer),a0
+0000210C 23FC 4000 0010 00C0 0004   		move.l	#$40000010,($C00004).l
+00002116 303C 000F                  		move.w	#$F,d0
+0000211A                            @VerBuf:
+0000211A 23D8 00C0 0000             		move.l	(a0)+,($C00000).l
+00002120 51C8 FFF8                  		dbf	d0,@VerBuf
+00002124                            
+00002124 41F9 FFFF D9AA             		lea	(RAM_HorBuffer),a0
+0000212A 23FC 7C00 0003 00C0 0004   		move.l	#$7C000003,($C00004).l
+00002134 303C 00DF                  		move.w	#224-1,d0
+00002138                            @HorBuf:
+00002138 23D8 00C0 0000             		move.l	(a0)+,($C00000).l
+0000213E 51C8 FFF8                  		dbf	d0,@HorBuf
+00002142                            
+00002142 4E75                       		rts
+00002144                            
+00002144                            ; -------------------------------------------------
+00002144                            
+00002144                            Hint_Default:
+00002144 4E75                       		rts
+00002144 4E75                       		rts
+00002146                                            
+00002146                            ; ====================================================================
+00002146                            ; ---------------------------------------------
+00002146                            ; Code | Modes
+00002146                            ; ---------------------------------------------
+00002146                            
+00002146                            ; 		include	"engine/modes/level/code.asm"
+00002146                            		include	"engine/modes/title/code.asm"
+00002146                            ; =================================================================
+00002146                            ; Title
+00002146                            ; =================================================================
+00002146                            
+00002146                            ; ------------------------------------------------
+00002146                            ; Variables
+00002146                            ; ------------------------------------------------
+00002146                            
+00002146                            		rsreset
+00002146 =00000000                  vid_artstart	rs.l	1
+00002146 =00000004                  vid_mapstart	rs.l	1
+00002146 =00000008                  vid_keystart	rs.l	1
+00002146                            
+00002146 =0000000C                  vid_artnext	rs.l	1
+00002146 =00000010                  vid_mapnext	rs.l	1
+00002146 =00000014                  vid_keynext	rs.l	1
+00002146                            
+00002146 =00000018                  vid_vram	rs.l	1		;FBR1FBR2
+00002146 =0000001C                  vid_keepframe	rs.l	1
+00002146 =00000020                  vid_sound	rs.l 	1
+00002146                            
+00002146 =00000024                  vid_rate	rs.w	1
+00002146 =00000026                  vid_timer	rs.w	1
+00002146 =00000028                  vid_frmswitch	rs.w	1
+00002146 =0000002A                  vid_xsize	rs.w	1
+00002146 =0000002C                  vid_ysize	rs.w	1
+00002146 =0000002E                  vid_dmasize	rs.w	1
+00002146 =00000030                  sizeof_vid	rs.l	0
+00002146                            
+00002146                            
+00002146 =60000003                  vid_Plane_BG	equ	$60000003
+00002146 =70000003                  vid_Plane_FG	equ	$70000003
+00002146                            
+00002146                            ; ------------------------------------------------
+00002146                            ; RAM
+00002146                            ; ------------------------------------------------
+00002146                            
+00002146                            		rsset	RAM_ModeBuffer
+00002146 =FFFFA000                  RAM_FullMotVid	rs.b	sizeof_vid
+00002146                            
+00002146                            ; =================================================================
+00002146                            ; ------------------------------------------------
+00002146                            ; Init
+00002146                            ; ------------------------------------------------
+00002146                            
+00002146                            mode_Title:
+00002146 203C 0100 0000             		move.l	#ID_FadeOut,d0
+0000214C 223C 003F 0001              		move.l	#$003F0001,d1
+00002152 6100 F7E4                   		bsr	PalFade_Set
+00002156 6100 F804                   		bsr	PalFade_Wait
+0000215A                            
+0000215A 46FC 2700                  		move.w	#$2700,sr
+0000215E                            		
+0000215E                            ; -----------------------------------
+0000215E                            ; Cleanup
+0000215E                            ; -----------------------------------
+0000215E                            
+0000215E 6100 F30A                  		bsr	Vdp_ClearPlanes
+00002162 6100 F816                  		bsr	Mode_Cleanup
+00002166                            		
+00002166                            ; -----------------------------------
+00002166                            ; Init stuff
+00002166                            ; -----------------------------------
+00002166                            
+00002166 23FC 0000 20BE FFFF D000   		move.l	#VInt_Default,(RAM_VIntAddr)
+00002170 23FC 0000 2144 FFFF D004   		move.l	#Hint_Default,(RAM_HIntAddr)
+0000217A 41F9 FFFF EBAA             		lea	(RAM_VdpRegs),a0
+00002180 117C 0000 000C             		move.b	#vdp_H32,vdpReg_HMode(a0)
+00002186 117C 0000 0010             		move.b	#0,vdpReg_PlnSize(a0)
+0000218C 6100 F51A                  		bsr	Vdp_Update
+00002190                            		
+00002190                            ; -----------------------------------
+00002190                            		
+00002190                            ;                 moveq	#0,d0
+00002190                            ;                 move.l	(RAM_Joypads),d0
+00002190                            ;                 move.l	#vid_Plane_BG,d1
+00002190                            ;                 move.w	#$8000,d2
+00002190                            ;                bsr	VDP_ShowVal_Long
+00002190                                           
+00002190 41FA 0000                    		lea	Art_TempFont(pc),a0
+00002194 303C 0320                    		move.w	#$320,d0
+00002198 323C 0000                    		move.w	#((Art_TempFont_End-Art_TempFont)/4)-1,d1
+0000219C 6100 F33C                    		bsr	VDP_SendData_L
+000021A0                              		
+000021A0 41F9 0000 0000               		lea	(Vid_Data),a0
+000021A6 303C 0002                    		move.w	#2,d0
+000021AA 323C 0001                    		move.w	#$001,d1
+000021AE 343C 0200                    		move.w	#$200,d2
+000021B2 6100 0000                    		bsr	MegaVid_Load
+000021B6                              		
+000021B6                            ; 		lea	(Map_Title),a0
+000021B6                            ; 		move.l	#Plane_BG,d0
+000021B6                            ; 		move.w	#(256/8)-1,d1
+000021B6                            ; 		move.w	#((224/4)/8)-1,d2
+000021B6                            ; 		moveq	#0,d3
+000021B6                            ; 		moveq	#0,d4
+000021B6                            ; 		bsr	MegaVid_LoadMaps
+000021B6                            ; 		lea	(Map_Title),a0
+000021B6                            ; 		move.l	#Plane_BG+(vdp_Ypos_32*7),d0
+000021B6                            ; 		move.w	#(256/8)-1,d1
+000021B6                            ; 		move.w	#((224/4)/8)-1,d2
+000021B6                            ; 		move.w	#($E0)+$2000+1,d3
+000021B6                            ; 		moveq	#0,d4
+000021B6                            ; 		bsr	MegaVid_LoadMaps
+000021B6                            ; 		lea	(Map_Title),a0
+000021B6                            ; 		move.l	#Plane_BG+(vdp_Ypos_32*(7*2)),d0
+000021B6                            ; 		move.w	#(256/8)-1,d1
+000021B6                            ; 		move.w	#((224/4)/8)-1,d2
+000021B6                            ; 		move.w	#($E0*2)+$4000+2,d3
+000021B6                            ; 		moveq	#0,d4
+000021B6                            ; 		bsr	MegaVid_LoadMaps
+000021B6                            ; 		lea	(Map_Title),a0
+000021B6                            ; 		move.l	#Plane_BG+(vdp_Ypos_32*(7*3)),d0
+000021B6                            ; 		move.w	#(256/8)-1,d1
+000021B6                            ; 		move.w	#((224/4)/8)-1,d2
+000021B6                            ; 		move.w	#($E0*3)+$6000+3,d3
+000021B6                            ; 		moveq	#0,d4
+000021B6                            ; 		bsr	MegaVid_LoadMaps
+000021B6                            ; 		
+000021B6                            ; 		lea	(Art_Title),a0
+000021B6                            ; 		move.w	#0,d0
+000021B6                            ; 		move.w	#((Art_Title_End-Art_Title)/4)-1,d1
+000021B6                            ; 		bsr	VDP_SendData_L
+000021B6                              		
+000021B6                            ;          	move.l	#TestSong,d0
+000021B6                            ;           	moveq	#2,d1
+000021B6                            ;           	bsr	Smeg_LoadSong
+000021B6                            
+000021B6 303C 00E8                         		move.w	#$E8,d0
+000021BA 0839 0006 00A1 0001               		btst	#6,($A10001)
+000021C2 6700                              		beq.s	@ntsc
+000021C4 303C 00C8                         		move.w	#$C8,d0
+000021C8                            @ntsc:
+000021C8 33C0 FFFF A080                    		move.w	d0,(RAM_ModeBuffer+$80)
+000021CE                                   		
+000021CE                            ; -----------------------------------
+000021CE                             		
+000021CE 46FC 2000                  		move.w	#$2000,sr
+000021D2                            		
+000021D2                            @wait:
+000021D2 6100 F4F6                  		bsr	VSync
+000021D6 0479 0001 FFFF A080        		sub.w	#1,(RAM_ModeBuffer+$80)
+000021DE 6AF2                       		bpl.s	@wait
+000021E0 4279 FFFF A080             		clr.w	(RAM_ModeBuffer+$80)
+000021E6 41F9 0000 0000              		lea	(Pal_Title),a0
+000021EC 43F9 FFFF E02A                		lea	(RAM_PalBuffer),a1
+000021F2 7000                          		moveq	#((Pal_Title_End-Pal_Title)/2)-1,d0
+000021F4 6100 F7CE                     		bsr	LoadData_Word
+000021F8                            		
+000021F8                            ; 		move.l	#ID_FadeIn,d0
+000021F8                            ; 		move.l	#$003F0001,d1
+000021F8                            ; 		bsr	PalFade_Set
+000021F8                            ; 		bsr	PalFade_Wait
+000021F8                            		
+000021F8                            ; =================================================================
+000021F8                            ; ------------------------------------------------
+000021F8                            ; Loop
+000021F8                            ; ------------------------------------------------
+000021F8                            
+000021F8                            Title_Loop:
+000021F8 6100 F4D0                  		bsr 	VSync
+000021FC                            		
+000021FC 6100 0000                    		bsr	MegaVid_Run
+00002200                            		
+00002200                            ;                 moveq	#0,d0
+00002200                            ;                 move.l	(RAM_Joypads),d0
+00002200                            ;                 move.l	#Plane_FG,d1
+00002200                            ;                 move.w	#$8560+"0"+$6000,d2
+00002200                            ;                 bsr	VDP_ShowVal_Long
+00002200                            ;                 moveq	#0,d0
+00002200                            ;                 move.l	(RAM_Joypads+4),d0
+00002200                            ;                 move.l	#Plane_FG+(vdp_Xpos*8),d1
+00002200                            ;                 move.w	#$8560+"0"+$6000,d2
+00002200                            ;                 bsr	VDP_ShowVal_Long
+00002200                                            
+00002200                            ;  		btst	#bitJoyStart,(RAM_Joypads+OnPress)
+00002200                            ;  		beq.s	@keep
+00002200                            ;  		move.b	#1,(RAM_GameMode)
+00002200                            ; 		rts	
+00002200                            ; @keep:
+00002200 6000 FFF6                  		bra	Title_Loop
+00002204                            		
+00002204                            ; =================================================================
+00002204                            ; ------------------------------------------------
+00002204                            ; Subs
+00002204                            ; ------------------------------------------------
+00002204                            		
+00002204                            MegaVid_Load:
+00002204 4DF9 FFFF A000             		lea	(RAM_FullMotVid),a6
+0000220A 3D40 0024                  		move.w 	d0,vid_rate(a6)
+0000220E 3D41 0018                  		move.w	d1,vid_vram(a6)
+00002212 3D42 001A                  		move.w	d2,vid_vram+2(a6)
+00002216                            		
+00002216 2258                       		movea.l	(a0)+,a1
+00002218 2018                        		move.l	(a0)+,d0
+0000221A 2D40 0000                   		move.l	d0,vid_artstart(a6)
+0000221E 2D40 000C                   		move.l	d0,vid_artnext(a6)
+00002222 2018                        		move.l	(a0)+,d0
+00002224 2D40 0004                   		move.l	d0,vid_mapstart(a6)
+00002228 2D40 0010                   		move.l	d0,vid_mapnext(a6)
+0000222C D0FC 0004                    		adda 	#4,a0			;later for dynpalette
+00002230                              		
+00002230 2011                         		move.l	(a1),d0
+00002232 3D69 0006 002A               		move.w	6(a1),vid_xsize(a6)
+00002238 3D69 0008 002C               		move.w	8(a1),vid_ysize(a6)
+0000223E D2FC 0010                    		adda 	#$10,a1
+00002242 2D49 0008                   		move.l	a1,vid_keystart(a6)
+00002246 2D49 0014                   		move.l	a1,vid_keynext(a6)
+0000224A                            		
+0000224A 7400                       		moveq	#0,d2
+0000224C 2429 0008                      		move.l	8(a1),d2
+00002250 E94A                           		lsl.w	#4,d2
+00002252 302E 0018                    		move.w	vid_vram(a6),d0
+00002256 6100 F298                    		bsr	VDP_VramAddr
+0000225A 222E 000C                   		move.l	vid_artnext(a6),d1
+0000225E 6100 0000                   		bsr	MegaVid_LoadDmaArt
+00002262                            
+00002262 226E 0014                      		movea.l	vid_keynext(a6),a1
+00002266 2029 000C                      		move.l	$C(a1),d0
+0000226A E348                           		lsl.w	#1,d0
+0000226C 3D40 001C                      		move.w	d0,vid_keepframe(a6)
+00002270 206E 0010                   		movea.l	vid_mapnext(a6),a0
+00002274 203C 6000 0003               		move.l	#vid_Plane_BG,d0
+0000227A 322E 002A                    		move.w	vid_xsize(a6),d1
+0000227E 342E 002C                    		move.w	vid_ysize(a6),d2
+00002282 362E 0018                    		move.w	vid_vram(a6),d3
+00002286                            ;   		add.w	#$8000,d3
+00002286 7800                         		moveq	#0,d4
+00002288 6100 F382                    		bsr	VDP_LoadMaps
+0000228C                             		
+0000228C 41F9 FFFF EBAA             		lea	(RAM_VdpRegs),a0
+00002292                            ;   		move.b	#$38,2(a0)			;Layer A address
+00002292 117C 0000 000C             		move.b	#vdp_H32,vdpReg_HMode(a0)	;H32 mode
+00002298 117C 0000 0010             		move.b	#0,vdpReg_PlnSize(a0)		;Plane size: 32x32
+0000229E 6100 F408                  		bsr	Vdp_Update
+000022A2                            		
+000022A2 6100 0000                    		bsr	MegaVid_PlaySound
+000022A6 6000 0000                     		bra	MegaVid_Run
+000022AA                            @Bad:
+000022AA 4E75                       		rts
+000022AC                            		
+000022AC                            ; ------------------------------------------------
+000022AC                            
+000022AC                            MegaVid_Run:
+000022AC 4DF9 FFFF A000             		lea	(RAM_FullMotVid),a6
+000022B2 046E 0001 0026             		sub.w	#1,vid_timer(a6)
+000022B8 6A00 0000                   		bpl	@wait 
+000022BC 3D6E 0024 0026              		move.w	vid_rate(a6),vid_timer(a6)
+000022C2                            
+000022C2 4A6E 001C                     		tst.w	vid_keepframe(a6)
+000022C6 6700 0000                     		beq	@Valid
+000022CA 6A00 0000                     		bpl	@CountFrame
+000022CE                            @Valid:
+000022CE                            
+000022CE 226E 0014                   		movea.l	vid_keynext(a6),a1
+000022D2                            
+000022D2 7400                        		moveq	#0,d2
+000022D4 2429 0008                       		move.l	8(a1),d2
+000022D8 E94A                            		lsl.w	#4,d2
+000022DA 302E 0018                      		move.w	vid_vram(a6),d0
+000022DE 4A2E 0028                        		tst.b	vid_frmswitch(a6)
+000022E2 6600                             		bne.s	@Fine
+000022E4 302E 001A                        		move.w	vid_vram+2(a6),d0
+000022E8                            @Fine:
+000022E8 6100 F206                    		bsr	VDP_VramAddr
+000022EC 222E 000C                    		move.l	vid_artnext(a6),d1
+000022F0 6100 0000                    		bsr	MegaVid_LoadDmaArt
+000022F4                             		
+000022F4 2029 000C                      		move.l	$C(a1),d0
+000022F8 E348                           		lsl.w	#1,d0
+000022FA 3D40 001C                      		move.w	d0,vid_keepframe(a6)
+000022FE                             	
+000022FE 206E 0010                  		movea.l	vid_mapnext(a6),a0
+00002302 203C 6000 0003              		move.l	#vid_Plane_BG,d0
+00002308                            ;     		tst.b	vid_frmswitch(a6)
+00002308                            ;     		bne.s	@Fine3
+00002308                            ;  		move.l	#vid_Plane_BG+(vdp_Xpos*32),d0
+00002308                            ; @Fine3:
+00002308 322E 002A                   		move.w	vid_xsize(a6),d1
+0000230C 342E 002C                   		move.w	vid_ysize(a6),d2
+00002310 362E 0018                    		move.w	vid_vram(a6),d3
+00002314 4A2E 0028                      		tst.b	vid_frmswitch(a6)
+00002318 6600                           		bne.s	@Fine2
+0000231A 362E 001A                    		move.w	vid_vram+2(a6),d3
+0000231E                            @Fine2:
+0000231E                            ;   		add.w	#$8000,d3
+0000231E 7800                        		moveq	#0,d4
+00002320 6100 F2EA                   		bsr	VDP_LoadMaps
+00002324 086E 0000 0028              		bchg	#0,vid_frmswitch(a6)
+0000232A                             		
+0000232A                            ;  		moveq	#0,d0
+0000232A                            ;     		tst.b	vid_frmswitch(a6)
+0000232A                            ;     		beq.s	@Fine4
+0000232A                            ;  		move.w	#-$100,d0
+0000232A                            ; @Fine4:
+0000232A                            ; 		move.w	d0,(RAM_HorBuffer)
+0000232A                            ; 		move.w	d0,(RAM_HorBuffer+2)
+0000232A                            		
+0000232A 206E 0014                  		movea.l	vid_keynext(a6),a0
+0000232E 4A90                        		tst.l	(a0)
+00002330 6A00                        		bpl.s 	@Keep_Play
+00002332                             		
+00002332 2D6E 0000 000C             		move.l	vid_artstart(a6),vid_artnext(a6)
+00002338 2D6E 0004 0010             		move.l 	vid_mapstart(a6),vid_mapnext(a6)
+0000233E 2D6E 0008 0014             		move.l 	vid_keystart(a6),vid_keynext(a6)
+00002344 4E75                        		rts
+00002346                            ;  		bra	MegaVid_PlaySound
+00002346                             		
+00002346                            @Keep_Play:
+00002346 202E 0000                     		move.l 	vid_artstart(a6),d0
+0000234A 2228 0004                      		move.l 	4(a0),d1
+0000234E D081                           		add.l	d1,d0 
+00002350 2D40 000C                      		move.l	d0,vid_artnext(a6)
+00002354                               		
+00002354 202E 0004                     		move.l 	vid_mapstart(a6),d0
+00002358 2210                          		move.l 	(a0),d1
+0000235A D081                          		add.l	d1,d0 
+0000235C 2D40 0010                     		move.l	d0,vid_mapnext(a6)
+00002360                             		
+00002360 06AE 0000 0010 0014         		add.l	#$10,vid_keynext(a6)
+00002368                            	
+00002368                            @CountFrame:
+00002368 046E 0001 001C                		sub.w	#1,vid_keepframe(a6)
+0000236E                            @Wait:
+0000236E 4E75                       		rts
+00002370                            
+00002370                            ; ------------------------------------------------
+00002370                            
+00002370                            ; MegaVid_LoadMaps:
+00002370 1839 FFFF EBBA             		move.b	(RAM_VdpRegs+vdpReg_PlnSize),d4
+00002376 0244 0003                   		and.w	#%00000011,d4
+0000237A E54C                        		lsl.w	#2,d4
+0000237C 4BFA F378                   		lea	VDP_LineAddr(pc),a5
+00002380 2815                        		move.l	(a5),d4
+00002382                            @Y_Loop:
+00002382 23C0 00C0 0004             		move.l	d0,($C00004).l		;Set VDP location from d0
+00002388 3A01                       		move.w	d1,d5	  		;Move X-pos value to d3
+0000238A                            @X_Loop:
+0000238A 3C18                       		move.w	(a0)+,d6
+0000238C 0C46 07FF                  		cmp.w	#$7FF,d6
+00002390 6700                       		beq.s 	@cont
+00002392 DC43                                       add.w	d3,d6  
+00002394                            @cont:
+00002394 33C6 00C0 0000                             move.w	d6,($C00000)		;Put data
+0000239A 51CD FFEE                  		dbf	d5,@X_Loop		;X-pos loop (from d1 to d3)
+0000239E D084                       		add.l	d4,d0                   ;Next line
+000023A0 51CA FFE0                  		dbf	d2,@Y_Loop		;Y-pos loop
+000023A4 4E75                       		rts
+000023A6                            
+000023A6                            ; -----------------------------------
+000023A6                            
+000023A6                            MegaVid_LoadDmaArt:
+000023A6 48E7 0060                  		movem.l	a1-a2,-(sp)
+000023AA 2241                       		move.l	d1,a1
+000023AC E281                       		asr.l	#1,d1
+000023AE 45F9 00C0 0004              		lea	($C00004).l,a2
+000023B4 34BC 8F02                  		move.w	#$8F02,(a2)
+000023B8 363C 8164                  		move.w	#$8164,d3
+000023BC 08C3 0004                  		bset	#4,d3
+000023C0 3483                       		move.w	d3,(a2)
+000023C2 263C 0094 0000             		move.l	#$940000,d3
+000023C8 3602                       		move.w	d2,d3
+000023CA E18B                       		lsl.l	#8,d3
+000023CC 363C 9300                  		move.w	#$9300,d3
+000023D0 1602                       		move.b	d2,d3
+000023D2 2483                       		move.l	d3,(a2)
+000023D4 263C 0096 0000             		move.l	#$960000,d3
+000023DA 3601                       		move.w	d1,d3
+000023DC E18B                       		lsl.l	#8,d3
+000023DE 363C 9500                  		move.w	#$9500,d3
+000023E2 1601                       		move.b	d1,d3
+000023E4 2483                       		move.l	d3,(a2)
+000023E6 4841                       		swap	d1
+000023E8 363C 9700                  		move.w	#$9700,d3
+000023EC 1601                       		move.b	d1,d3
+000023EE 3483                       		move.w	d3,(a2)
+000023F0 0080 4000 0080             		or.l	#$40000080,d0
+000023F6 4840                       		swap	d0
+000023F8 3480                       		move.w	d0,(a2)
+000023FA 4840                       		swap	d0
+000023FC 3F00                       		move.w	d0,-(sp)
+000023FE 349F                       		move.w	(sp)+,(a2)
+00002400 34BC 8164                  		move.w	#$8164,(a2)
+00002404 0240 FF7F                  		and.w	#$FF7F,d0
+00002408 2480                       		move.l	d0,(a2)
+0000240A 2551 FFFC                  		move.l	(a1),-4(a2)
+0000240E 34BC 8F02                  		move.w	#$8F02,(a2)
+00002412 4CDF 0600                  		movem.l	(sp)+,a1-a2
+00002416 4E75                       		rts
+00002418                            		
+00002418                            ; ------------------------------------------------
+00002418                            
+00002418                            MegaVid_PlaySound:
+00002418 203C 0000 0000             		move.l	#Sample_1,d0
+0000241E 223C 0000 0000             		move.l	#Sample_1_End,d1
+00002424 243C 0000 0000             		move.l	#Sample_1+63036,d2
+0000242A 7601                       		moveq	#1,d3
+0000242C                            ;  		bsr	PlaySample
+0000242C                             		
+0000242C                            PlaySample:
+0000242C 33FC 0100 00A1 1100        		move.w	#$100,($A11100).l
+00002434                            @WaitZ80:
+00002434 0839 0000 00A1 1100        		btst	#0,($A11100).l
+0000243C 66F6                       		bne.s	@WaitZ80
+0000243E                            
+0000243E 41F9 00A0 01E0             		lea	($A001E0),a0
+00002444                            		;Start
+00002444 7800                       		moveq	#0,d4
+00002446 4A40                       		tst.w	d0
+00002448 6A00                       		bpl.s	@plus_s
+0000244A 383C 0081                  		move.w	#$81,d4
+0000244E                            @plus_s:
+0000244E 4840                       		swap	d0
+00002450 4844                       		swap	d4
+00002452 1800                       		move.b	d0,d4
+00002454 4844                       		swap	d4
+00002456 4840                       		swap	d0
+00002458 10C4                       		move.b	d4,(a0)+		;start Bank	+$8000
+0000245A 4844                       		swap	d4
+0000245C 10C4                       		move.b	d4,(a0)+		;		$xx0000
+0000245E 4844                       		swap	d4
+00002460 10C0                       		move.b	d0,(a0)+		;start Addr	$00xx
+00002462 E048                       		lsr.w	#8,d0
+00002464 10C0                       		move.b	d0,(a0)+		;		$xx00
+00002466                            		
+00002466                            		;Loop
+00002466 7800                       		moveq	#0,d4
+00002468 4A41                       		tst.w	d1
+0000246A 6A00                       		bpl.s	@plus_e
+0000246C 383C 0081                  		move.w	#$81,d4
+00002470                            @plus_e:
+00002470 4841                       		swap	d1
+00002472 4844                       		swap	d4
+00002474 1801                       		move.b	d1,d4
+00002476 4844                       		swap	d4
+00002478 4841                       		swap	d1
+0000247A 10C4                       		move.b	d4,(a0)+		;start Bank	+$8000
+0000247C 4844                       		swap	d4
+0000247E 10C4                       		move.b	d4,(a0)+		;		$xx0000
+00002480 4844                       		swap	d4
+00002482 10C1                       		move.b	d1,(a0)+		;start Addr	$00xx
+00002484 E049                       		lsr.w	#8,d1
+00002486 10C1                       		move.b	d1,(a0)+		;		$xx00
+00002488                            		
+00002488                            		;End
+00002488 7800                       		moveq	#0,d4
+0000248A 4A42                       		tst.w	d2
+0000248C 6A00                       		bpl.s	@plus_l
+0000248E 383C 0081                  		move.w	#$81,d4
+00002492                            @plus_l:
+00002492 4842                       		swap	d2
+00002494 4844                       		swap	d4
+00002496 1802                       		move.b	d2,d4
+00002498 4844                       		swap	d4
+0000249A 4842                       		swap	d2
+0000249C 10C4                       		move.b	d4,(a0)+		;start Bank	+$8000
+0000249E 4844                       		swap	d4
+000024A0 10C4                       		move.b	d4,(a0)+		;		$xx0000
+000024A2 4844                       		swap	d4
+000024A4 10C2                       		move.b	d2,(a0)+		;start Addr	$00xx
+000024A6 E04A                       		lsr.w	#8,d2
+000024A8 10C2                       		move.b	d2,(a0)+		;		$xx00
+000024AA                            		
+000024AA 7048                       		moveq	#$3C+12,d0		; NOTE
+000024AC 0440 000B                    		sub.w	#12-1,d0
+000024B0 3200                       		move.w	d0,d1
+000024B2 ED49                       		lsl.w	#6,d1
+000024B4 0641 0200                  		add.w	#$200,d1
+000024B8 13C1 00A0 00F6             		move.b	d1,($A000F6)		; ld bc,(NEW ADDRESS)
+000024BE E049                       		lsr.w	#8,d1			;
+000024C0 13C1 00A0 00F7             		move.b	d1,($A000F7)		;
+000024C6                            		
+000024C6 7001                       		moveq	#1,d0			; TODO: Loop flag
+000024C8 E308                       		lsl.b	#1,d0
+000024CA 08C0 0000                  		bset	#0,d0
+000024CE 13C0 00A0 01ED             		move.b	d0,($A001E0+$D)
+000024D4                            		
+000024D4 33FC 0000 00A1 1100         		move.w  #$0,($A11100)
+000024DC 4E75                       		rts
+000024DE                                		
+000024DE                            ; ================================================================
+000024DE                            ; Z80
+000024DE                            ; ================================================================
+000024DE                            
+000024DE                            Z80_Init:
+000024DE 33FC 0100 00A1 1100        		move.w	#$100,($A11100).l
+000024E6 33FC 0100 00A1 1200        		move.w	#$100,($A11200).l
+000024EE                            @WaitZ80:
+000024EE 0839 0000 00A1 1100        		btst	#0,($A11100).l
+000024F6 66F6                       		bne.s	@WaitZ80
+000024F8                            
+000024F8 41F9 00A0 0000             		lea	($A00000).l,a0
+000024FE 303C 1FFF                  		move.w	#$1FFF,d0
+00002502                            @cleanup:
+00002502 4218                       		clr.b	(a0)+
+00002504 51C8 FFFC                  		dbf	d0,@cleanup
+00002508                            		
+00002508 41FA 0000                  		lea	Z80Driver(pc),a0
+0000250C 43F9 00A0 0000             		lea	($A00000).l,a1
+00002512 323C 0000                  		move.w	#Z80DriverEnd-Z80Driver,d1
+00002516                            @ToZ80:
+00002516 12D8                       		move.b	(a0)+,(a1)+
+00002518 51C9 FFFC                  		dbf	d1,@ToZ80
+0000251C                            
+0000251C                            ; -----------------------------------
+0000251C                            
+0000251C 33FC 0000 00A1 1200        		move.w	#0,($A11200).l
+00002524 4E71                       		nop
+00002526 4E71                       		nop
+00002528 4E71                       		nop
+0000252A 4E71                       		nop
+0000252C 33FC 0100 00A1 1200        		move.w	#$100,($A11200).l
+00002534 33FC 0000 00A1 1100        		move.w	#0,($A11100).l
+0000253C 4E75                       		rts
+0000253E                            		
+0000253E                            
+0000253E                            ; ---------------------------------------------------
+0000253E                            
+0000253E                            Z80Driver:	incbin	"engine/sound/data/z80/main.bin"
+0000393E                            Z80DriverEnd:
+0000393E                            		even
+0000393E                            		
+0000393E                            ; =================================================================
+0000393E                            ; ------------------------------------------------
+0000393E                            ; Hblank
+0000393E                            ; ------------------------------------------------
+0000393E                            		
+0000393E                            ; =================================================================
+0000393E                            ; ------------------------------------------------
+0000393E                            ; VBlank
+0000393E                            ; ------------------------------------------------
+0000393E                            	
+0000393E                            Art_TempFont:	incbin	"engine/shared/data/art_dbgfont.bin",0,($20*96)
+0000453E                            Art_TempFont_End:
+0000453E                            		even
+0000453E                            		
+0000453E                            Pal_Title:	incbin	"engine/modes/Title/data/vidtest/pal.bin"
+0000455E                            Pal_Title_End:
+0000455E                            		even
+0000455E                            		
+0000455E                            		
+0000455E                            		
+0000455E                            ; ---------------------------------------------
+0000455E                            ; Code | Sound
+0000455E                            ; ---------------------------------------------
+0000455E                            
+0000455E                            ; 		include	"engine/sound/code.asm"
+0000455E                            		
+0000455E                            ; ====================================================================
+0000455E                            ; ---------------------------------------------
+0000455E                            ; Data | Shared
+0000455E                            ; ---------------------------------------------
+0000455E                            
+0000455E                            		include	"engine/shared/main.asm"
+0000455E                            ; ====================================================================
+0000455E                            ; Shared Data
+0000455E                            ; ====================================================================
+0000455E                            
+0000455E                            Pal_DbgFont:	incbin	"engine/shared/data/pal_temp.bin"
+0000457E                            Pal_DbgFont_End:
+0000457E                            		even
+0000457E                            
+0000457E                            
+0000457E                            		
+0000457E                            ; ---------------------------------------------
+0000457E                            ; Data | Modes
+0000457E                            ; ---------------------------------------------
+0000457E                            
+0000457E                            ; 		include	"engine/modes/level/data/main.asm"
+0000457E                             		include	"engine/modes/title/data/main.asm"
+0000457E                            ; =================================================================
+0000457E                            ; ------------------------------------------------
+0000457E                            ; Data
+0000457E                            ; ------------------------------------------------
+0000457E                            
+0000457E                            Vid_Data:
+0000457E 0000 0000                  		dc.l @Frames
+00004582 0000 0000                  		dc.l @GFX
+00004586 0000 0000                  		dc.l @Maps
+0000458A 0000 0000                  		dc.l 0
+0000458E                            @Frames:
+0000458E                            		incbin	"engine/modes/Title/data/vidtest/frames.bin"
+0000465E                            		even
+0000465E                            @Maps:
+0000465E                            		incbin	"engine/modes/Title/data/vidtest/map.bin"
+00009A5E                            		even
+00009A5E                            
+00009A5E                            		cnop 0,$8000
+00010000                            @GFX:
+00010000                            		incbin	"engine/modes/Title/data/vidtest/art.bin"
+00036F80                            		even
+00036F80                            		
+00036F80                            		cnop 0,$4000
+00038000                            Sample_1:	incbin	"engine/sound/data/z80/out.wav",$2C,0x1F0000
+000B1262                            Sample_1_End:
+000B1262                            		even
+000B1262                            
+000B1262                            
+000B1262                            		
+000B1262                            ; ---------------------------------------------
+000B1262                            ; Data | Sound
+000B1262                            ; ---------------------------------------------
+000B1262                            
+000B1262                            ; 		include	"engine/sound/data/main.asm"
+000B1262                            
+000B1262                            ; ====================================================================
+000B1262                            
+000B1262                            		inform 0,"ROM SIZE: %h",*
+000B1262                            		cnop 0,$40000
+000C0000                            MD_RomEnd:

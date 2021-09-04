@@ -1,0 +1,23 @@
+<FORMATO DE PSG>
+
+1 - CANALES:
+	$90 = PSG1
+	$B0 = PSG2
+	$D0 = PSG3
+	$F0 = NOISE
+
+2 - NOTAS
+	$E0-$F0 - Notas unicas para NOISE
+
+3 - VOLUMEN
+	$F0-$FF - Volumen
+
+
+
+Notas:
+		dc.b	$10 	 	;PSG(1-3): Pitch
+		dc.b	$E0		;PSG(1-3): Channel
+		dc.b	$90		;PSG(1-3): Volume
+
+	 	dc.b	$F0		;PSG(NOISE): Channel
+	 	dc.b	$E1		;PSG(NOISE): Type

@@ -1,0 +1,4 @@
+RAM_Pal_1		equ	$FFFFE000
+RAM_Pal_2		equ	$FFFFE000+$20
+RAM_Pal_3		equ	$FFFFE000+$40
+RAM_Pal_4		equ	$FFFFE000+$60

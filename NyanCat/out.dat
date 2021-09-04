@@ -1,0 +1,3282 @@
+00000000 00FF F800 0000 0000 0000+                                          		dc.l $FFF800,Entrypoint,ErrorTrap,ErrorTrap
+00000010 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+00000020 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+00000030 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+00000040 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+00000050 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+00000060 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+00000070 0000 0000 0000 0000 0000+  		dc.l HBlank,ErrorTrap,VBlank,ErrorTrap
+00000080 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+00000090 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+000000A0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+000000B0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+000000C0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+000000D0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+000000E0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+000000F0 0000 0000 0000 0000 0000+  		dc.l ErrorTrap,ErrorTrap,ErrorTrap,ErrorTrap
+00000100                            
+00000100 5345 4741 2047 656E 6573+  		dc.b "SEGA Genesis    "
+00000110 2843 2947 4636 3420 3230+  		dc.b "(C)GF64 2011.???"
+00000120 4E79 616E 2043 6174 204D+  		dc.b "Nyan Cat MD                                     "
+00000150 4E79 616E 2043 6174 2020+  		dc.b "Nyan Cat                                        "
+00000180 474D 204D 4B2D 4E59 414E+  		dc.b "GM MK-NYAN!-01"
+0000018E 0000                       		dc.w 0
+00000190 4A20 2020 2020 2020 2020+  		dc.b "J               "
+000001A0 0000 0000                  		dc.l 0
+000001A4 0000 0000                  		dc.l 0
+000001A8 00FF 0000                  		dc.l $FF0000
+000001AC 00FF FFFF                  		dc.l $FFFFFF
+000001B0 2020 2020                  		dc.l $20202020
+000001B4 2020 2020                  		dc.l $20202020
+000001B8 2020 2020                  		dc.l $20202020
+000001BC 2020 2020 4C4F 4C20 4272+  		dc.b "    LOL Bronies                                     "
+000001F0 4A55 4520 2020 2020 2020+  		dc.b "JUE             "
+00000200                            
+00000200                            ; ===========================================================================
+00000200                            ErrorTrap:
+00000200 60FE                       		bra.s	*
+00000202                            
+00000202                            ; ===========================================================================
+00000202                            
+00000202                            		include	"int.asm"
+00000202 =00FFFFFC                  VarVsync	EQU	$00FFFFFC
+00000202 =00FFFFF8                  VarHsync	EQU	$00FFFFF8
+00000202                            
+00000202                            VBlank:
+00000202 41F9 00C0 0000             		lea	($C00000),a0
+00000208 43F8 FE00                  		lea	($FFFFFE00).w,a1
+0000020C 217C 7800 0003 0004        		move.l	#$78000003,4(a0)
+00000214                            
+00000214 2099                       		move.l	(a1)+,(a0)
+00000216 2099                       		move.l	(a1)+,(a0)
+00000218 2099                       		move.l	(a1)+,(a0)
+0000021A 2099                       		move.l	(a1)+,(a0)
+0000021C 2099                       		move.l	(a1)+,(a0)
+0000021E 2099                       		move.l	(a1)+,(a0)
+00000220 2099                       		move.l	(a1)+,(a0)
+00000222 2099                       		move.l	(a1)+,(a0)
+00000224                            
+00000224 48E7 00C0                  		movem.l	a0-a1,-(sp)
+00000228 4EB9 0000 0000             		jsr	ReadJoypads
+0000022E 4CDF 0300                  		movem.l	(sp)+,a0-a1
+00000232                            
+00000232 52B9 00FF FFFC             		addq.l	#1,(VarVsync)
+00000238 4EB9 0000 0000             		jsr	SndDrv_Update
+0000023E                            
+0000023E 4E73                       		rte
+00000240                            
+00000240                            ; ===========================================================================
+00000240                            HBlank:
+00000240                            
+00000240 4E73                       		rte
+00000240 4E73                       		rte
+00000242                            		even
+00000242                            
+00000242                            ; ===========================================================================
+00000242                            
+00000242                            EntryPoint:
+00000242 0CB8 08D3 0000 C000        		cmp.l	#$08D30000,($FFFFC000).w
+0000024A 6600 0000                  		bne	EntryPoint_OK
+0000024E 0CB8 BEB8 0100 C004        		cmp.l	#$BEB80100,($FFFFC004).w
+00000256 6600 0000                  		bne	EntryPoint_OK
+0000025A 0CB8 6722 B8B8 C008        		cmp.l	#$6722B8B8,($FFFFC008).w
+00000262 6600 0000                  		bne	EntryPoint_OK
+00000266 0CB8 0100 6608 C00C        		cmp.l	#$01006608,($FFFFC00C).w
+0000026E 6600 0000                  		bne	EntryPoint_OK
+00000272                            
+00000272 33FC 8144 00C0 0004        		move.w	#$8144,($C00004)
+0000027A 2A3C 4396 0003             		move.l	#$43960003,d5
+00000280 43F9 0000 0000                             lea	(Str_Disclaimer),a1
+00000286 363C 0020                                  move.w	#$20,d3
+0000028A 4EB9 0000 0000                             jsr	VDP_LoadStr
+00000290 203C 000D FFFF             		move.l	#$000DFFFF,d0
+00000296                            EntryPoint_Delay:
+00000296 0480 0000 0001             		sub.l	#1,d0
+0000029C 6600 FFF8                  		bne	EntryPoint_Delay
+000002A0                            
+000002A0 21FC 0000 0000 C000        		move.l	#0,($FFFFC000).w
+000002A8 21FC 0000 0000 C004        		move.l	#0,($FFFFC004).w
+000002B0 21FC 0000 0000 C008        		move.l	#0,($FFFFC008).w
+000002B8 21FC 0000 0000 C00C        		move.l	#0,($FFFFC00C).w
+000002C0                            
+000002C0                            EntryPoint_OK:
+000002C0 4EB9 0000 0000                             jsr	sub_729B6
+000002C6                            
+000002C6 1039 00A1 0001             		move.b	($A10001),d0
+000002CC 0200 000F                  		andi.b	#$0F,d0
+000002D0 6700 0000                  		beq	version_0
+000002D4 23FC 5345 4741 00A1 4000   		move.l	#'SEGA',$A14000
+000002DE                            version_0:
+000002DE                            
+000002DE 203C 4000 0003             		move.l	#$40000003,d0
+000002E4 4EB9 0000 0000             		jsr	ClearPlane
+000002EA 203C 6000 0003             		move.l	#$60000003,d0
+000002F0 4EB9 0000 0000             		jsr	ClearPlane
+000002F6                            		
+000002F6 4EB9 0000 0000             		jsr	SetupVDP
+000002FC                            
+000002FC 4EB9 0000 0000             		jsr	SoundDriverLoad
+00000302 4EB9 0000 0000             		jsr	JoypadInit
+00000308 46FC 2300                  		move.w	#$2300,sr
+0000030C                            
+0000030C 43F9 FFFF FE00                             lea	($FFFFFE00),a1
+00000312 22FC 0000 0000                             move.l	#0,(a1)+
+00000318 22FC 0000 0000                             move.l	#0,(a1)+
+0000031E 22FC 0000 0000                             move.l	#0,(a1)+
+00000324 22FC 0000 0000                             move.l	#0,(a1)+
+0000032A                            
+0000032A 31FC 0000 FFA0             		move.w	#0,($FFFFFFA0).w
+00000330 23FC C000 0000 00C0 0004   		move.l	#$C0000000,($C00004).l
+0000033A 303C 003F                  		move.w	#$3F,d0
+0000033E                            GamePrg_ClearPal:
+0000033E 33FC 0000 00C0 0000        		move.w	#0,($C00000).l
+00000346 51C8 FFF6                  		dbf	d0,GamePrg_ClearPal
+0000034A                            
+0000034A 0C38 0000 0000                             cmp.b	#JoyB+JoyC,(RAM_Control_1_Hold).w
+00000350 6700 0000                                  beq	GamePrg_Cheat
+00000354                            
+00000354 23FC 4400 0000 00C0 0004                   move.l	#$44000000,($C00004).l
+0000035E 45F9 0000 0000                             lea	(Art_Cat),a2
+00000364 303C 00FB                                  move.w	#$FB,d0
+00000368 6100 0000                                  bsr	VDP_LoadArt
+0000036C                            
+0000036C 303C 0081                                  move.w	#$81,d0
+00000370 4EB9 0000 0000                             jsr	PlaySound
+00000376                            GamePrg:
+00000376 0678 0001 FFA0             		add.w	#1,($FFFFFFA0).w
+0000037C 4EB9 0000 0000             		jsr	DelayProgram
+00000382 0C78 00D3 FFA0             		cmp.w	#$D3,($FFFFFFA0).w
+00000388 6F00 FFEC                  		ble	GamePrg
+0000038C                            
+0000038C 43F9 0000 0000             		lea	(Pal_NyanCat),a1
+00000392 303C 000F                  		move.w	#$F,d0
+00000396 23FC C000 0000 00C0 0004   		move.l	#$C0000000,($C00004).l
+000003A0 4EB9 0000 0000             		jsr	LoadPal
+000003A6                            
+000003A6 43F9 FFFF FE00                             lea	($FFFFFE00),a1
+000003AC 32FC 00E5                                  move.w	#$00E5,(a1)+
+000003B0 32FC 0E01                                  move.w	#$0E01,(a1)+
+000003B4 32FC 0020                                  move.w	#$0020,(a1)+
+000003B8 32FC 0105                                  move.w	#$0105,(a1)+
+000003BC                            
+000003BC 32FC 00E5                                  move.w	#$00E5,(a1)+
+000003C0 32FC 0A02                                  move.w	#$0A02,(a1)+
+000003C4 32FC 002C                                  move.w	#$0020+$C,(a1)+
+000003C8 32FC 0125                                  move.w	#$0105+$20,(a1)+
+000003CC                            
+000003CC                            GameProgram_Loop:
+000003CC 4EB9 0000 0000             		jsr	DelayProgram
+000003D2 4EB9 0000 0000                             jsr	NynaCat_Animate
+000003D8                            
+000003D8 60F2                       		bra.s	GameProgram_Loop
+000003DA                            
+000003DA                            ; ======================================================
+000003DA                            
+000003DA                            GamePrg_Cheat:
+000003DA 23FC 4020 0000 00C0 0004                   move.l	#$40200000,($C00004).l
+000003E4 45F9 0000 0000                             lea	(GFX_IMG),a2
+000003EA 303C 04A1                                  move.w	#1185,d0
+000003EE 4EB9 0000 0000             		jsr	VDP_LoadArt
+000003F4                            
+000003F4 43F9 0000 0000             		lea	(Maps_IMG),a1
+000003FA 203C 4000 0003             		move.l	#$40000003,d0
+00000400 7227                       		moveq	#39,d1
+00000402 741D                       		moveq	#29,d2
+00000404 3A3C 0001                  		move.w	#1,d5
+00000408 4EB9 0000 0000             		jsr	VDP_LoadMaps
+0000040E                            		
+0000040E 43F9 0000 0000             		lea	(Maps2_IMG),a1
+00000414 203C 6000 0003             		move.l	#$60000003,d0
+0000041A 7227                       		moveq	#39,d1
+0000041C 741D                       		moveq	#29,d2
+0000041E 3A3C 2001                  		move.w	#$2001,d5
+00000422 4EB9 0000 0000             		jsr	VDP_LoadMaps
+00000428                            
+00000428 303C 0082                                  move.w	#$82,d0
+0000042C 4EB9 0000 0000                             jsr	PlaySound
+00000432                            
+00000432 23FC C000 0000 00C0 0004                   move.l	#$C0000000,($C00004).l
+0000043C 43F9 0000 0000                             lea	(Pal_IMG),a1
+00000442 303C 001F                  		move.w	#$1F,d0
+00000446 4EB9 0000 0000             		jsr	LoadPal
+0000044C                            		
+0000044C                            GamePrg_Cheat_Loop:
+0000044C 4EB9 0000 0000             		jsr	DelayProgram
+00000452                            
+00000452 60F8                       		bra.s	GamePrg_Cheat_Loop
+00000454                            
+00000454                            ; ======================================================
+00000454 =FFFFFDFE                  RAM_MsgBuffer	equ	$FFFFFDFE
+00000454 =FFFFFDFC                  RAM_Frame	equ	$FFFFFDFC
+00000454 =FFFFFDFE                  RAM_Timer	equ	$FFFFFDFE
+00000454                            
+00000454                            NynaCat_Animate:
+00000454 5338 FDFE                  		subq.b	#1,(RAM_Timer).w
+00000458 6A00 0000                  		bpl	NynaCat_Animate_Rts
+0000045C 11FC 0003 FDFE                             move.b  #$3,(RAM_Timer).w
+00000462 7000                                       moveq	#0,d0
+00000464 3038 FDFC                                  move.w  (RAM_Frame).w,d0
+00000468 0678 0001 FDFC             		add.w	#1,(RAM_Frame).w
+0000046E 45F9 FFFF FE00                             lea     ($FFFFFE00),a2
+00000474                                            
+00000474 0C6A 0107 0004                             cmpi.w	#$107,4(a2)
+0000047A 6700 0000                                  beq	NynaCat_Animate_Restart
+0000047E 066A 0015 0004             		add.w   #$15,4(a2)
+00000484 066A 0015 000C             		add.w   #$15,$C(a2)
+0000048A                            
+0000048A                            NynaCat_Animate_Rts:
+0000048A 4E75                                       rts
+0000048C                            
+0000048C                            NynaCat_Animate_Restart:
+0000048C 357C 0020 0004                             move.w	#$0020,4(a2)
+00000492 357C 002C 000C                             move.w	#$0020+$C,$C(a2)
+00000498 31FC 0000 FDFC             		move.w	#0,(RAM_Frame).w
+0000049E 4E75                       		rts
+000004A0                            
+000004A0                            ; ======================================================
+000004A0                            
+000004A0                            		include	"Subs/VDP.asm"
+000004A0                            ; ======================================================================
+000004A0                            ; Rutinas para controlar el VDP (paletas, GFX, etc.)
+000004A0                            ; ======================================================================
+000004A0                            
+000004A0                            ; Colores
+000004A0 =0000000E                  VDP_Color_Red			equ	$000E
+000004A0 =000000E0                  VDP_Color_Green			equ	$00E0
+000004A0 =00000E00                  VDP_Color_Blue			equ	$0E00
+000004A0 =00000EE0                  VDP_Color_Cyan			equ	$0EE0
+000004A0 =000000EE                  VDP_Color_Yellow		equ	$00EE
+000004A0 =00000E0E                  VDP_Color_Pink			equ	$0E0E
+000004A0                            
+000004A0                            ; ======================================================================
+000004A0                            
+000004A0                            SetupVDP:
+000004A0 33FC 8014 00C0 0004        		move.w	#$8014,($C00004).l	;???, HIntEnable
+000004A8 33FC 8174 00C0 0004        		move.w	#$8174,($C00004).l	;DisplayEnable, VIntEnable, V28
+000004B0 33FC 8230 00C0 0004        		move.w	#$8230,($C00004).l	;Zona de escritura del FG ($C000)
+000004B8 33FC 8334 00C0 0004        		move.w	#$8334,($C00004).l	;Zona de escritura del Window ($D000)
+000004C0 33FC 8407 00C0 0004        		move.w	#$8407,($C00004).l	;Zona de escritura del BG ($E000)
+000004C8 33FC 857C 00C0 0004        		move.w	#$857C,($C00004).l	;Zona de escritura de los Sprites ($F800)
+000004D0 33FC 8600 00C0 0004        		move.w	#$8600,($C00004).l	;???
+000004D8 33FC 8700 00C0 0004        		move.w	#$8700,($C00004).l	;Color de fondo
+000004E0 33FC 8800 00C0 0004        		move.w	#$8800,($C00004).l	;???
+000004E8 33FC 8900 00C0 0004        		move.w	#$8900,($C00004).l	;???
+000004F0 33FC 8A02 00C0 0004        		move.w	#$8A02,($C00004).l	;Valor H-Int
+000004F8 33FC 8B00 00C0 0004        		move.w	#$8B00,($C00004).l	;Tipo de scrolling ($00 = Todo normal)
+00000500 33FC 8C01 00C0 0004        		move.w	#$8C01,($C00004).l	;Resolucion
+00000508 33FC 8D3D 00C0 0004        		move.w	#$8D3D,($C00004).l	;Zona del scrolling horizontal ($F400)
+00000510 33FC 8E00 00C0 0004        		move.w	#$8E00,($C00004).l	;???
+00000518 33FC 8F02 00C0 0004        		move.w	#$8F02,($C00004).l	;Auto incremento (siempre $2)
+00000520 33FC 9001 00C0 0004        		move.w	#$9001,($C00004).l	;Tipo de pantalla (predeterminado $1)
+00000528 33FC 9100 00C0 0004        		move.w	#$9100,($C00004).l	;Window
+00000530 33FC 9200 00C0 0004        		move.w	#$9200,($C00004).l	;Window
+00000538 33FC 9300 00C0 0004        		move.w	#$9300,($C00004).l	;DMA
+00000540 33FC 9400 00C0 0004        		move.w	#$9400,($C00004).l	;DMA
+00000548 33FC 9500 00C0 0004        		move.w	#$9500,($C00004).l	;DMA
+00000550 33FC 9600 00C0 0004        		move.w	#$9600,($C00004).l	;DMA
+00000558 33FC 9700 00C0 0004        		move.w	#$9700,($C00004).l	;DMA
+00000560 4E75                       		rts
+00000562                            
+00000562                            ; ======================================================================
+00000562                            ClearPlane:
+00000562 7227                       		moveq	#$27,d1		;X-pos
+00000564 743F                       		moveq	#$3F,d2		;Y-pos
+00000566 43F9 00C0 0000             		lea	($C00000).l,a1
+0000056C 283C 0080 0000             		move.l	#$800000,d4
+00000572                            
+00000572                            ClearPlane_1:
+00000572 2340 0004                  		move.l	d0,4(a1)
+00000576 3601                       		move.w	d1,d3
+00000578                            
+00000578                            ClearPlane_2:
+00000578 32BC 0000                  		move.w	#0,(a1)
+0000057C 51CB FFFA                  		dbf	d3,ClearPlane_2
+00000580 D084                       		add.l	d4,d0
+00000582 51CA FFEE                  		dbf	d2,ClearPlane_1
+00000586 4E75                       		rts
+00000588                            
+00000588                            ; ======================================================================
+00000588                            
+00000588                            ClearVRAM:
+00000588 46FC 2700                  		move.w	#$2700,sr
+0000058C                            		
+0000058C 43F9 00C0 0000             		lea	($C00000).l,a1
+00000592 23FC 4000 0000 00C0 0004   		move.l	#$40000000,($C00004).l
+0000059C 7200                       		moveq	#0,d1
+0000059E 303C 007F                  		move.w	#$7F, d0
+000005A2                            
+000005A2                            ClearVRAM_Loop:
+000005A2 2281                       		move.l	d1,(a1)
+000005A4 2281                       		move.l	d1,(a1)
+000005A6 2281                       		move.l	d1,(a1)
+000005A8 2281                       		move.l	d1,(a1)
+000005AA 2281                       		move.l	d1,(a1)
+000005AC 2281                       		move.l	d1,(a1)
+000005AE 2281                       		move.l	d1,(a1)
+000005B0 2281                       		move.l	d1,(a1)
+000005B2 51C8 FFEE                  		dbf	d0, ClearVRAM_Loop
+000005B6                            
+000005B6 46FC 2300                  		move.w	#$2300,sr
+000005BA 4E75                       		rts
+000005BC                            
+000005BC                            ; ======================================================================
+000005BC                            
+000005BC                            VDP_LoadArt:
+000005BC 46FC 2700                  		move.w	#$2700,sr
+000005C0                            
+000005C0 43F9 00C0 0000             		lea	($C00000), a1
+000005C6                            LoadArt_Loop:
+000005C6 229A                       		move.l	(a2)+,(a1)
+000005C8 229A                       		move.l	(a2)+,(a1)
+000005CA 229A                       		move.l	(a2)+,(a1)
+000005CC 229A                       		move.l	(a2)+,(a1)
+000005CE 229A                       		move.l	(a2)+,(a1)
+000005D0 229A                       		move.l	(a2)+,(a1)
+000005D2 229A                       		move.l	(a2)+,(a1)
+000005D4 229A                       		move.l	(a2)+,(a1)
+000005D6 51C8 FFEE                  		dbf	d0,LoadArt_Loop
+000005DA                            
+000005DA 46FC 2300                  		move.w	#$2300,sr
+000005DE 4E75                       		rts
+000005E0                            
+000005E0                            ; ======================================================================
+000005E0                            
+000005E0                            ;LoadFont:
+000005E0                            ;		move.w	#$5A,d3
+000005E0                            ;		move.l	#$74000002,($C00004).l
+000005E0                            ;		lea	(DbgFont),a2
+000005E0                            ;		jmp	VDP_LoadArt
+000005E0                            
+000005E0                            ; ======================================================================
+000005E0                            
+000005E0                            LoadPal_RAM:
+000005E0 30D9                       		move.w	(a1)+,(a0)+
+000005E2 51C8 FFFC                  		dbf	d0,LoadPal_RAM
+000005E6 4E75                       		rts
+000005E8                            
+000005E8                            LoadPal:
+000005E8 41F9 00C0 0000             		lea	($C00000),a0
+000005EE                            		
+000005EE                            LoadPal_Loop:
+000005EE 3099                       		move.w	(a1)+,(a0)
+000005F0 51C8 FFFC                  		dbf	d0,LoadPal_Loop
+000005F4 4E75                       		rts
+000005F6                            
+000005F6                            ; ======================================================================
+000005F6                            
+000005F6                            VDP_LoadMaps:
+000005F6 46FC 2700                  		move.w	#$2700,sr
+000005FA                            
+000005FA 4DF9 00C0 0000             		lea	($C00000).l,a6
+00000600 283C 0080 0000             		move.l	#$800000,d4
+00000606                            
+00000606                            ShowVDPGraphics_LineLoop:
+00000606 2D40 0004                  		move.l	d0,4(a6)
+0000060A 3601                       		move.w	d1,d3
+0000060C                            
+0000060C                            ShowVDPGraphics_TileLoop:
+0000060C 3C19                       		move.w	(a1)+,d6
+0000060E DC45                                       add.w	d5,d6
+00000610 3C86                                       move.w	d6,(a6)
+00000612 51CB FFF8                  		dbf	d3,ShowVDPGraphics_TileLoop
+00000616 D084                       		add.l	d4,d0
+00000618 51CA FFEC                  		dbf	d2,ShowVDPGraphics_LineLoop
+0000061C                            
+0000061C 46FC 2300                  		move.w	#$2300,sr
+00000620 4E75                       		rts
+00000622                            
+00000622                            ; ======================================================================
+00000622                            ; VDP_LoadStr
+00000622                            ; Muestra texto (o GFX) en pantalla
+00000622                            ;
+00000622                            ; d5 - Control VDP, por
+00000622                            ; ======================================================================
+00000622                            
+00000622                            VDP_LoadStr:
+00000622 23C5 00C0 0004             		move.l	d5,($C00004).l
+00000628                            LoadText_Loop:
+00000628 7200                       		moveq	#0,d1
+0000062A 1219                       		move.b	(a1)+,d1
+0000062C 6B00 0000                  		bmi.w	LoadASCII_AddSpace	; if a1 = $FF, branch
+00000630 6600 0000                  		bne.w	LoadASCII_Print
+00000634 4E75                       		rts
+00000636                            LoadASCII_Print:
+00000636 4A43                       		tst.w	d3
+00000638 6700 0000                  		beq	LoadASCII_Print_2
+0000063C D243                       		add.w	d3,d1
+0000063E                            LoadASCII_Print_2:
+0000063E 33C1 00C0 0000             		move.w	d1,($C00000)		;"print" la letra
+00000644 6000 FFE2                  		bra.w	LoadText_Loop
+00000648                            LoadASCII_AddSpace:
+00000648 0685 0080 0000             		add.l	#$800000,d5		;Espacio
+0000064E 6000 FFD2                  		bra.w	VDP_LoadStr
+00000652                            
+00000652                            ; ======================================================================
+00000652                            
+00000652                            VDP_ShowByte:
+00000652 1400                       		move.b	d0,d2
+00000654 E808                       		lsr.b	#4,d0
+00000656 6100 0000                  		bsr	sub_3808_4
+0000065A 1002                       		move.b	d2,d0
+0000065C                            sub_3808_4:
+0000065C 0240 000F                  		andi.w	#$F,d0
+00000660 0C00 000A                  		cmpi.b	#$A,d0
+00000664 6500 0000                  		bcs	loc_3816_4
+00000668 0600 0007                  		addi.b	#7,d0
+0000066C                            loc_3816_4:
+0000066C D043                       		add.w	d3,d0
+0000066E 33C0 00C0 0000             		move.w	d0,($C00000)
+00000674 4E75                       		rts
+00000676                            		
+00000676                            ; ======================================================================
+00000676                            		
+00000676                            DelayProgram:
+00000676 3039 00C0 0004             		move.w	($C00004),d0
+0000067C 0800 0003                  		btst	#3,d0
+00000680 6600 FFF4                  		bne	DelayProgram
+00000684                            WaitOneFrame1:
+00000684 3039 00C0 0004             		move.w	($C00004),d0
+0000068A 0800 0003                  		btst	#3,d0
+0000068E 6700 FFF4                  		beq	WaitOneFrame1
+00000692 4E75                       		rts
+00000692 4E75                       		rts
+00000694                            		even
+00000694                            		include	"Subs/PalHndl.asm"
+00000694 =FFFFE000                  RAM_Pal_1		equ	$FFFFE000
+00000694 =FFFFE020                  RAM_Pal_2		equ	$FFFFE000+$20
+00000694 =FFFFE040                  RAM_Pal_3		equ	$FFFFE000+$40
+00000694 =FFFFE060                  RAM_Pal_4		equ	$FFFFE000+$60
+00000694 =FFFFE060                  RAM_Pal_4		equ	$FFFFE000+$60
+00000694                            		even
+00000694                            		include	"Subs/Pads.asm"
+00000694 =FFFFFFE0                  RAM_Control_1_Hold			equ		$FFFFFFE0	;Byte
+00000694 =FFFFFFE1                  RAM_Control_1_Press			equ		$FFFFFFE1	;Byte
+00000694 =FFFFFFE2                  RAM_Control_2_Hold			equ		$FFFFFFE2	;Byte
+00000694 =FFFFFFE3                  RAM_Control_2_Press			equ		$FFFFFFE3	;Byte
+00000694                            
+00000694 =00000001                  JoyUp					equ		$01
+00000694 =00000002                  JoyDown					equ		$02
+00000694 =00000003                  JoyUpDown				equ		$03
+00000694 =00000004                  JoyLeft					equ		$04
+00000694 =00000005                  JoyUpLeft				equ		$05
+00000694 =00000006                  JoyDownLeft				equ		$06
+00000694 =00000007                  JoyUnk07				equ		$07
+00000694 =00000008                  JoyRight				equ		$08
+00000694 =00000009                  JoyUpRight				equ		$09
+00000694 =0000000A                  JoyDownRight				equ		$0A
+00000694 =0000000B                  JoyUnk0B				equ		$0B
+00000694 =0000000C                  JoyLeftRight				equ		$0C
+00000694 =0000000F                  JoyCursor				equ		$0F
+00000694 =00000010                  JoyB					equ		$10
+00000694 =00000020                  JoyC					equ		$20
+00000694 =00000040                  JoyA					equ		$40
+00000694 =00000070                  JoyABC					equ		$70
+00000694 =00000080                  JoyStart				equ		$80
+00000694 =000000C0                  JoyAStart				equ		$C0
+00000694 =000000F0                  JoyABCS					equ		$F0
+00000694                            
+00000694                            ; ======================== S U B R O U T I N E ==========================================
+00000694                            
+00000694                            JoypadInit:
+00000694 33FC 0100 00A1 1100        		move.w	#$100,($A11100).l
+0000069C                            
+0000069C                            JoypadInit_Z80Wait:
+0000069C 0839 0000 00A1 1100        		btst	#0,($A11100).l
+000006A4 66F6                       		bne.s	JoypadInit_Z80Wait
+000006A6 7040                       		moveq	#$40,d0
+000006A8 13C0 00A1 0009             		move.b	d0,($A10009).l
+000006AE 13C0 00A1 000B             		move.b	d0,($A1000B).l
+000006B4 13C0 00A1 000D             		move.b	d0,($A1000D).l
+000006BA 33FC 0000 00A1 1100        		move.w	#0,($A11100).l
+000006C2 4E75                       		rts
+000006C4                            
+000006C4                            ; =============== S U B R O U T I N E ==========================================
+000006C4                            
+000006C4                            
+000006C4                            ReadJoypads:
+000006C4 41F8 FFE0                  		lea	(RAM_Control_1_Hold).w,a0
+000006C8 43F9 00A1 0003             		lea	($A10003).l,a1
+000006CE 6100                       		bsr.s	Joypad_Read
+000006D0 5448                       		addq.w	#2,a0
+000006D2 5449                       		addq.w	#2,a1
+000006D4                            
+000006D4                            Joypad_Read:
+000006D4 12BC 0000                  		move.b	#0,(a1)
+000006D8 4E71                       		nop
+000006DA 4E71                       		nop
+000006DC 1011                       		move.b	(a1),d0
+000006DE E508                       		lsl.b	#2,d0
+000006E0 0200 00C0                  		andi.b	#$C0,d0
+000006E4 12BC 0040                  		move.b	#$40,(a1) ; '@'
+000006E8 4E71                       		nop
+000006EA 4E71                       		nop
+000006EC 1211                       		move.b	(a1),d1
+000006EE 0201 003F                  		andi.b	#$3F,d1	; '?'
+000006F2 8001                       		or.b	d1,d0
+000006F4 4600                       		not.b	d0
+000006F6 1210                       		move.b	(a0),d1
+000006F8 B101                       		eor.b	d0,d1
+000006FA 10C0                       		move.b	d0,(a0)+
+000006FC C200                       		and.b	d0,d1
+000006FE 10C1                       		move.b	d1,(a0)+
+00000700 4E75                       		rts
+00000700 4E75                       		rts
+00000702                            		even
+00000702                            
+00000702                            ; ======================================================
+00000702                            Pal_NyanCat:
+00000702                            		incbin "Data/Pal_Cat.bin"
+00000782                            		even
+00000782                            Art_Cat:
+00000782                            		incbin "Data/Art_Cat.bin"
+00002702                            		even
+00002702                            
+00002702                            Str_Disclaimer:
+00002702 2020 2054 4849 5320 4741+  		dc.b "   THIS GAME IS",$FF
+00002712 FF                         		dc.b $FF
+00002713 2020 2020 2020 204E 4F54+  		dc.b "       NOT",0
+0000271E                            		even
+0000271E                            
+0000271E                            ; ======================================================
+0000271E                            
+0000271E                            Pal_IMG:
+0000271E                            		incbin	"Data/Pal.bin"
+0000275E                            		even
+0000275E                            GFX_IMG:
+0000275E                            		incbin	"Data/GFX.bin"
+0000BB9E                            		even
+0000BB9E                            Maps_IMG:
+0000BB9E                            		incbin	"Data/Maps.bin"
+0000C45E                            		even
+0000C45E                            Maps2_IMG:
+0000C45E                            		incbin	"Data/Maps2.bin"
+0000CD1E                            		even
+0000CD1E                            
+0000CD1E                            ; ======================================================
+0000CD1E                            
+0000CD1E                            		include	"Snd/main.asm"
+0000CD1E                            ; ---------------------------------------------------------------------------
+0000CD1E                            ; Sonic 1 Sound Driver
+0000CD1E                            ; ---------------------------------------------------------------------------
+0000CD1E                            
+0000CD1E =FFFF7000                  RAM_SndDrv_MusicList	equ	$FFFF7000
+0000CD1E =FFFF7004                  RAM_SndDrv_SFXList	equ	$FFFF7004
+0000CD1E                            
+0000CD1E 0000 0000                  Go_SoundTypes:		dc.l SoundTypes
+0000CD22                            ;Go_SoundD0:		dc.l SoundD0Index
+0000CD22 0000 0000                  Go_MusicIndex:		dc.l MusicIndex
+0000CD26 0000 0000                  Go_SoundIndex:		dc.l SoundIndex
+0000CD2A                            ;Go_SoundIndex_E0toF9:	dc.l SoundIndex_E0plus
+0000CD2A 0000 0000                  off_719A0:		dc.l byte_71A94
+0000CD2E 0000 0000                  Go_PSGIndex:		dc.l PSG_Index
+0000CD32                            ; ---------------------------------------------------------------------------
+0000CD32                            ; PSG instruments used in music
+0000CD32                            ; ---------------------------------------------------------------------------
+0000CD32 0000 0000 0000 0000 0000+  PSG_Index:	dc.l PSG1, PSG2, PSG3
+0000CD3E 0000 0000 0000 0000 0000+  		dc.l PSG4, PSG5, PSG6
+0000CD4A 0000 0000 0000 0000 0000+  		dc.l PSG7, PSG8, PSG9
+0000CD56                            PSG1:		incbin	Snd\Data\psg1.bin
+0000CD6D                            PSG2:		incbin	Snd\Data\psg2.bin
+0000CD74                            PSG3:		incbin	Snd\Data\psg3.bin
+0000CD85                            PSG4:		incbin	Snd\Data\psg4.bin
+0000CD90                            PSG6:		incbin	Snd\Data\psg6.bin
+0000CD9F                            PSG5:		incbin	Snd\Data\psg5.bin
+0000CDC9                            PSG7:		incbin	Snd\Data\psg7.bin
+0000CDE5                            PSG8:		incbin	Snd\Data\psg8.bin
+0000CE0D                            PSG9:		incbin	Snd\Data\psg9.bin
+0000CE1E                            
+0000CE1E 0772 7326 1508 FF05        byte_71A94:	dc.b 7,	$72, $73, $26, $15, 8, $FF, 5
+0000CE26                            ; ---------------------------------------------------------------------------
+0000CE26                            ; Music	Pointers
+0000CE26                            ; ---------------------------------------------------------------------------
+0000CE26 0000 0000                  MusicIndex:	dc.l Music81
+0000CE2A 0000 0000                  		dc.l Music82
+0000CE2E                            		even
+0000CE2E                            
+0000CE2E                            ; ---------------------------------------------------------------------------
+0000CE2E                            ; Type of sound	being played ($90 = music; $70 = normal	sound effect)
+0000CE2E                            ; ---------------------------------------------------------------------------
+0000CE2E 9090 9090 9090 9090 9090+  SoundTypes:	dc.b $90, $90, $90, $90, $90, $90, $90,	$90, $90, $90, $90, $90, $90, $90, $90,	$90
+0000CE3E 9090 9090 9090 9090 9090+  		dc.b $90, $90, $90, $90, $90, $90, $90,	$90, $90, $90, $90, $90, $90, $90, $90,	$80
+0000CE4E 7070 7070 7070 7070 7068+  		dc.b $70, $70, $70, $70, $70, $70, $70,	$70, $70, $68, $70, $70, $70, $60, $70,	$70
+0000CE5E 6070 6070 7070 7070 7070+  		dc.b $60, $70, $60, $70, $70, $70, $70,	$70, $70, $70, $70, $70, $70, $70, $7F,	$60
+0000CE6E 7070 7070 7070 7070 7070+  		dc.b $70, $70, $70, $70, $70, $70, $70,	$70, $70, $70, $70, $70, $70, $70, $70,	$80
+0000CE7E 7070 7070 7070 7070 7070+  		dc.b $70, $70, $70, $70, $70, $70, $70,	$70, $70, $70, $70, $70, $70, $70, $70,	$70
+0000CE8E 7070 7070 7070 7070 7070+  		dc.b $70, $70, $70, $70, $70, $70, $70, $70, $70, $70, $70, $70, $70, $70, $70, $70
+0000CE9E 9090 9090 9090 9090 9090+  		dc.b $90, $90, $90, $90, $90, $90, $90, $90, $90, $90, $90, $90, $90, $90, $90, $90
+0000CEAE                            
+0000CEAE                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000CEAE                            
+0000CEAE                            SndDrv_Update:
+0000CEAE 33FC 0100 00A1 1100        		move.w	#$100,($A11100).l ; stop the Z80
+0000CEB6 4E71                       		nop
+0000CEB8 4E71                       		nop	
+0000CEBA 4E71                       		nop	
+0000CEBC                            
+0000CEBC                            loc_71B5A:
+0000CEBC 0839 0000 00A1 1100        		btst	#0,($A11100).l
+0000CEC4 66F6                       		bne.s	loc_71B5A
+0000CEC6                            
+0000CEC6 0839 0007 00A0 1FFD        		btst	#7,($A01FFD).l
+0000CECE 6700                       		beq.s	loc_71B82
+0000CED0 33FC 0000 00A1 1100        		move.w	#0,($A11100).l	; start	the Z80
+0000CED8 4E71                       		nop	
+0000CEDA 4E71                       		nop	
+0000CEDC 4E71                       		nop	
+0000CEDE 4E71                       		nop	
+0000CEE0 4E71                       		nop	
+0000CEE2 60CA                       		bra.s	SndDrv_Update
+0000CEE4                            
+0000CEE4                            ; ==============================================================
+0000CEE4                            PlaySound:
+0000CEE4 11C0 F00A                  		move.b	d0,($FFFFF00A).w
+0000CEE8 4E75                       		rts
+0000CEEA                            
+0000CEEA                            ; ==============================================================
+0000CEEA                            PlaySound_Special:
+0000CEEA 11C0 F00B                  		move.b	d0,($FFFFF00B).w
+0000CEEE 4E75                       		rts
+0000CEF0                            
+0000CEF0                            ; ==============================================================
+0000CEF0                            SoundDriverLoad:
+0000CEF0 33FC 0100 00A1 1100        		move.w	#$100,($A11100).l
+0000CEF8 33FC 0100 00A1 1200        		move.w	#$100,($A11200).l
+0000CF00                            
+0000CF00 41F9 0000 0000             		lea	(Kos_Z80).l,a0
+0000CF06 43F9 00A0 0000             		lea	($A00000).l,a1
+0000CF0C 343C 0000                  		move.w	#(Kos_Z80_End-Kos_Z80),d2
+0000CF10                            SndDriverLoad_Loop:
+0000CF10 12D8                       		move.b	(a0)+,(a1)+
+0000CF12 51CA FFFC                  		dbf	d2,SndDriverLoad_Loop
+0000CF16                            
+0000CF16 33FC 0000 00A1 1200        		move.w	#0,($A11200).l
+0000CF1E 33FC 0100 00A1 1200        		move.w	#$100,($A11200).l
+0000CF26 33FC 0000 00A1 1100        		move.w	#0,($A11100).l
+0000CF2E 4E75                       		rts
+0000CF30                            
+0000CF30                            ; ===========================================================================
+0000CF30                            
+0000CF30                            loc_71B82:
+0000CF30 4DF9 00FF F000             		lea	($FFF000).l,a6
+0000CF36 422E 000E                  		clr.b	$E(a6)
+0000CF3A 4A2E 0003                  		tst.b	3(a6)		; is music paused?
+0000CF3E 6600 0000                  		bne.w	loc_71E50	; if yes, branch
+0000CF42 532E 0001                  		subq.b	#1,1(a6)
+0000CF46 6600                       		bne.s	loc_71B9E
+0000CF48 4EBA 0000                  		jsr	sub_7260C(pc)
+0000CF4C                            
+0000CF4C                            loc_71B9E:
+0000CF4C 102E 0004                  		move.b	4(a6),d0
+0000CF50 6700                       		beq.s	loc_71BA8
+0000CF52 4EBA 0000                  		jsr	sub_72504(pc)
+0000CF56                            
+0000CF56                            loc_71BA8:
+0000CF56 4A2E 0024                  		tst.b	$24(a6)
+0000CF5A 6700                       		beq.s	loc_71BB2
+0000CF5C 4EBA 0000                  		jsr	sub_7267C(pc)
+0000CF60                            
+0000CF60                            loc_71BB2:
+0000CF60 4A6E 000A                  		tst.w	$A(a6)		; is music or sound being played?
+0000CF64 6700                       		beq.s	loc_71BBC	; if not, branch
+0000CF66 4EBA 0000                  		jsr	Sound_Play(pc)
+0000CF6A                            
+0000CF6A                            loc_71BBC:
+0000CF6A 0C2E 0080 0009             		cmpi.b	#$80,9(a6)
+0000CF70 6700                       		beq.s	loc_71BC8
+0000CF72 4EBA 0000                  		jsr	Sound_ChkValue(pc)
+0000CF76                            
+0000CF76                            loc_71BC8:
+0000CF76 4BEE 0040                  		lea	$40(a6),a5
+0000CF7A 4A15                       		tst.b	(a5)
+0000CF7C 6A00                       		bpl.s	loc_71BD4
+0000CF7E 4EBA 0000                  		jsr	sub_71C4E(pc)
+0000CF82                            
+0000CF82                            loc_71BD4:
+0000CF82 422E 0008                  		clr.b	8(a6)
+0000CF86 7E05                       		moveq	#5,d7
+0000CF88                            
+0000CF88                            loc_71BDA:
+0000CF88 DAFC 0030                  		adda.w	#$30,a5
+0000CF8C 4A15                       		tst.b	(a5)
+0000CF8E 6A00                       		bpl.s	loc_71BE6
+0000CF90 4EBA 0000                  		jsr	sub_71CCA(pc)
+0000CF94                            
+0000CF94                            loc_71BE6:
+0000CF94 51CF FFF2                  		dbf	d7,loc_71BDA
+0000CF98                            
+0000CF98 7E02                       		moveq	#2,d7
+0000CF9A                            
+0000CF9A                            loc_71BEC:
+0000CF9A DAFC 0030                  		adda.w	#$30,a5
+0000CF9E 4A15                       		tst.b	(a5)
+0000CFA0 6A00                       		bpl.s	loc_71BF8
+0000CFA2 4EBA 0000                  		jsr	sub_72850(pc)
+0000CFA6                            
+0000CFA6                            loc_71BF8:
+0000CFA6 51CF FFF2                  		dbf	d7,loc_71BEC
+0000CFAA                            
+0000CFAA 1D7C 0080 000E             		move.b	#$80,$E(a6)
+0000CFB0 7E02                       		moveq	#2,d7
+0000CFB2                            
+0000CFB2                            loc_71C04:
+0000CFB2 DAFC 0030                  		adda.w	#$30,a5
+0000CFB6 4A15                       		tst.b	(a5)
+0000CFB8 6A00                       		bpl.s	loc_71C10
+0000CFBA 4EBA 0000                  		jsr	sub_71CCA(pc)
+0000CFBE                            
+0000CFBE                            loc_71C10:
+0000CFBE 51CF FFF2                  		dbf	d7,loc_71C04
+0000CFC2                            
+0000CFC2 7E02                       		moveq	#2,d7
+0000CFC4                            
+0000CFC4                            loc_71C16:
+0000CFC4 DAFC 0030                  		adda.w	#$30,a5
+0000CFC8 4A15                       		tst.b	(a5)
+0000CFCA 6A00                       		bpl.s	loc_71C22
+0000CFCC 4EBA 0000                  		jsr	sub_72850(pc)
+0000CFD0                            
+0000CFD0                            loc_71C22:
+0000CFD0 51CF FFF2                  		dbf	d7,loc_71C16
+0000CFD4 1D7C 0040 000E             		move.b	#$40,$E(a6)
+0000CFDA DAFC 0030                  		adda.w	#$30,a5
+0000CFDE 4A15                       		tst.b	(a5)
+0000CFE0 6A00                       		bpl.s	loc_71C38
+0000CFE2 4EBA 0000                  		jsr	sub_71CCA(pc)
+0000CFE6                            
+0000CFE6                            loc_71C38:
+0000CFE6 DAFC 0030                  		adda.w	#$30,a5
+0000CFEA 4A15                       		tst.b	(a5)
+0000CFEC 6A00                       		bpl.s	loc_71C44
+0000CFEE 4EBA 0000                  		jsr	sub_72850(pc)
+0000CFF2                            
+0000CFF2                            loc_71C44:
+0000CFF2 33FC 0000 00A1 1100        		move.w	#0,($A11100).l	; start	the Z80
+0000CFFA 4E75                       		rts	
+0000CFFC                            ; End of function sub_71B4C
+0000CFFC                            
+0000CFFC                            
+0000CFFC                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000CFFC                            
+0000CFFC                            
+0000CFFC                            sub_71C4E:				; XREF: sub_71B4C
+0000CFFC 532D 000E                  		subq.b	#1,$E(a5)
+0000D000 6600                       		bne.s	locret_71CAA
+0000D002 1D7C 0080 0008             		move.b	#$80,8(a6)
+0000D008 286D 0004                  		movea.l	4(a5),a4
+0000D00C                            
+0000D00C                            loc_71C5E:
+0000D00C 7A00                       		moveq	#0,d5
+0000D00E 1A1C                       		move.b	(a4)+,d5
+0000D010 0C05 00E0                  		cmpi.b	#-$20,d5
+0000D014 6500                       		bcs.s	loc_71C6E
+0000D016 4EBA 0000                  		jsr	sub_72A5A(pc)
+0000D01A 60F0                       		bra.s	loc_71C5E
+0000D01C                            ; ===========================================================================
+0000D01C                            
+0000D01C                            loc_71C6E:
+0000D01C 4A05                       		tst.b	d5
+0000D01E 6A00                       		bpl.s	loc_71C84
+0000D020 1B45 0010                  		move.b	d5,$10(a5)
+0000D024 1A1C                       		move.b	(a4)+,d5
+0000D026 6A00                       		bpl.s	loc_71C84
+0000D028 534C                       		subq.w	#1,a4
+0000D02A 1B6D 000F 000E             		move.b	$F(a5),$E(a5)
+0000D030 6000                       		bra.s	loc_71C88
+0000D032                            ; ===========================================================================
+0000D032                            
+0000D032                            loc_71C84:
+0000D032 4EBA 0000                  		jsr	sub_71D40(pc)
+0000D036                            
+0000D036                            loc_71C88:
+0000D036 2B4C 0004                  		move.l	a4,4(a5)
+0000D03A 0815 0002                  		btst	#2,(a5)
+0000D03E 6600                       		bne.s	locret_71CAA
+0000D040 7000                       		moveq	#0,d0
+0000D042 102D 0010                  		move.b	$10(a5),d0
+0000D046 0C00 0080                  		cmpi.b	#$80,d0
+0000D04A 6700                       		beq.s	locret_71CAA
+0000D04C 0C38 0000 FF3A             		cmp.b   #0,($FFFFFF3A).w
+0000D052 6E00                       		bgt.s	locret_71CAA
+0000D054                            	;	btst	#3,d0                                     
+0000D054                            	;	bne.s	loc_71CAC
+0000D054                            	;	cmp.b	#$8C,d0
+0000D054                            	;	bge.s	loc_71CAC
+0000D054 4EB9 0000 0000             		jsr	Calculate_PCM
+0000D05A 13C0 00A0 1FFF             		move.b	d0,($A01FFF).l
+0000D060                            
+0000D060                            
+0000D060                            locret_71CAA:
+0000D060 4E75                       		rts
+0000D062                            ; ===========================================================================
+0000D062                            
+0000D062                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D062                            
+0000D062                            
+0000D062                            sub_71CCA:				; XREF: sub_71B4C
+0000D062 532D 000E                  		subq.b	#1,$E(a5)
+0000D066 6600                       		bne.s	loc_71CE0
+0000D068 0895 0004                  		bclr	#4,(a5)
+0000D06C 4EBA 0000                  		jsr	sub_71CEC(pc)
+0000D070 4EBA 0000                  		jsr	sub_71E18(pc)
+0000D074 6000 0000                  		bra.w	loc_726E2
+0000D078                            ; ===========================================================================
+0000D078                            
+0000D078                            loc_71CE0:
+0000D078 4EBA 0000                  		jsr	sub_71D9E(pc)
+0000D07C 4EBA 0000                  		jsr	sub_71DC6(pc)
+0000D080 6000 0000                  		bra.w	loc_71E24
+0000D084                            ; End of function sub_71CCA
+0000D084                            
+0000D084                            
+0000D084                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D084                            
+0000D084                            
+0000D084                            sub_71CEC:				; XREF: sub_71CCA
+0000D084 286D 0004                  		movea.l	4(a5),a4
+0000D088 0895 0001                  		bclr	#1,(a5)
+0000D08C                            
+0000D08C                            loc_71CF4:
+0000D08C 7A00                       		moveq	#0,d5
+0000D08E 1A1C                       		move.b	(a4)+,d5
+0000D090 0C05 00E0                  		cmpi.b	#-$20,d5
+0000D094 6500                       		bcs.s	loc_71D04
+0000D096 4EBA 0000                  		jsr	sub_72A5A(pc)
+0000D09A 60F0                       		bra.s	loc_71CF4
+0000D09C                            ; ===========================================================================
+0000D09C                            
+0000D09C                            loc_71D04:
+0000D09C 4EBA 0000                  		jsr	sub_726FE(pc)
+0000D0A0 4A05                       		tst.b	d5
+0000D0A2 6A00                       		bpl.s	loc_71D1A
+0000D0A4 4EBA 0000                  		jsr	sub_71D22(pc)
+0000D0A8 1A1C                       		move.b	(a4)+,d5
+0000D0AA 6A00                       		bpl.s	loc_71D1A
+0000D0AC 534C                       		subq.w	#1,a4
+0000D0AE 6000 0000                  		bra.w	sub_71D60
+0000D0B2                            ; ===========================================================================
+0000D0B2                            
+0000D0B2                            loc_71D1A:
+0000D0B2 4EBA 0000                  		jsr	sub_71D40(pc)
+0000D0B6 6000 0000                  		bra.w	sub_71D60
+0000D0BA                            ; End of function sub_71CEC
+0000D0BA                            
+0000D0BA                            
+0000D0BA                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D0BA                            
+0000D0BA                            
+0000D0BA                            sub_71D22:				; XREF: sub_71CEC
+0000D0BA 0405 0080                  		subi.b	#$80,d5
+0000D0BE 6700                       		beq.s	loc_71D58
+0000D0C0 DA2D 0008                  		add.b	8(a5),d5
+0000D0C4 0245 007F                  		andi.w	#$7F,d5
+0000D0C8 E34D                       		lsl.w	#1,d5
+0000D0CA 41FA 0000                  		lea	word_72790(pc),a0
+0000D0CE 3C30 5000                  		move.w	(a0,d5.w),d6
+0000D0D2 3B46 0010                  		move.w	d6,$10(a5)
+0000D0D6 4E75                       		rts	
+0000D0D8                            ; End of function sub_71D22
+0000D0D8                            
+0000D0D8                            
+0000D0D8                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D0D8                            
+0000D0D8                            
+0000D0D8                            sub_71D40:				; XREF: sub_71C4E; sub_71CEC; sub_72878
+0000D0D8 1005                       		move.b	d5,d0
+0000D0DA 122D 0002                  		move.b	2(a5),d1
+0000D0DE                            
+0000D0DE                            loc_71D46:
+0000D0DE 5301                       		subq.b	#1,d1
+0000D0E0 6700                       		beq.s	loc_71D4E
+0000D0E2 D005                       		add.b	d5,d0
+0000D0E4 60F8                       		bra.s	loc_71D46
+0000D0E6                            ; ===========================================================================
+0000D0E6                            
+0000D0E6                            loc_71D4E:
+0000D0E6 1B40 000F                  		move.b	d0,$F(a5)
+0000D0EA 1B40 000E                  		move.b	d0,$E(a5)
+0000D0EE 4E75                       		rts	
+0000D0F0                            ; End of function sub_71D40
+0000D0F0                            
+0000D0F0                            ; ===========================================================================
+0000D0F0                            
+0000D0F0                            loc_71D58:				; XREF: sub_71D22
+0000D0F0 08D5 0001                  		bset	#1,(a5)
+0000D0F4 426D 0010                  		clr.w	$10(a5)
+0000D0F8                            
+0000D0F8                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D0F8                            
+0000D0F8                            
+0000D0F8                            sub_71D60:				; XREF: sub_71CEC; sub_72878; sub_728AC
+0000D0F8 2B4C 0004                  		move.l	a4,4(a5)
+0000D0FC 1B6D 000F 000E             		move.b	$F(a5),$E(a5)
+0000D102 0815 0004                  		btst	#4,(a5)
+0000D106 6600                       		bne.s	locret_71D9C
+0000D108 1B6D 0013 0012             		move.b	$13(a5),$12(a5)
+0000D10E 422D 000C                  		clr.b	$C(a5)
+0000D112 0815 0003                  		btst	#3,(a5)
+0000D116 6700                       		beq.s	locret_71D9C
+0000D118 206D 0014                  		movea.l	$14(a5),a0
+0000D11C 1B58 0018                  		move.b	(a0)+,$18(a5)
+0000D120 1B58 0019                  		move.b	(a0)+,$19(a5)
+0000D124 1B58 001A                  		move.b	(a0)+,$1A(a5)
+0000D128 1018                       		move.b	(a0)+,d0
+0000D12A E208                       		lsr.b	#1,d0
+0000D12C 1B40 001B                  		move.b	d0,$1B(a5)
+0000D130 426D 001C                  		clr.w	$1C(a5)
+0000D134                            
+0000D134                            locret_71D9C:
+0000D134 4E75                       		rts	
+0000D136                            ; End of function sub_71D60
+0000D136                            
+0000D136                            
+0000D136                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D136                            
+0000D136                            
+0000D136                            sub_71D9E:				; XREF: sub_71CCA; sub_72850
+0000D136 4A2D 0012                  		tst.b	$12(a5)
+0000D13A 6700                       		beq.s	locret_71DC4
+0000D13C 532D 0012                  		subq.b	#1,$12(a5)
+0000D140 6600                       		bne.s	locret_71DC4
+0000D142 08D5 0001                  		bset	#1,(a5)
+0000D146 4A2D 0001                  		tst.b	1(a5)
+0000D14A 6B00 0000                  		bmi.w	loc_71DBE
+0000D14E 4EBA 0000                  		jsr	sub_726FE(pc)
+0000D152 584F                       		addq.w	#4,sp
+0000D154 4E75                       		rts	
+0000D156                            ; ===========================================================================
+0000D156                            
+0000D156                            loc_71DBE:
+0000D156 4EBA 0000                  		jsr	sub_729A0(pc)
+0000D15A 584F                       		addq.w	#4,sp
+0000D15C                            
+0000D15C                            locret_71DC4:
+0000D15C 4E75                       		rts	
+0000D15E                            ; End of function sub_71D9E
+0000D15E                            
+0000D15E                            
+0000D15E                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D15E                            
+0000D15E                            
+0000D15E                            sub_71DC6:				; XREF: sub_71CCA; sub_72850
+0000D15E 584F                       		addq.w	#4,sp
+0000D160 0815 0003                  		btst	#3,(a5)
+0000D164 6700                       		beq.s	locret_71E16
+0000D166 4A2D 0018                  		tst.b	$18(a5)
+0000D16A 6700                       		beq.s	loc_71DDA
+0000D16C 532D 0018                  		subq.b	#1,$18(a5)
+0000D170 4E75                       		rts	
+0000D172                            ; ===========================================================================
+0000D172                            
+0000D172                            loc_71DDA:
+0000D172 532D 0019                  		subq.b	#1,$19(a5)
+0000D176 6700                       		beq.s	loc_71DE2
+0000D178 4E75                       		rts
+0000D17A                            ; ===========================================================================
+0000D17A                            
+0000D17A                            loc_71DE2:
+0000D17A 206D 0014                  		movea.l	$14(a5),a0
+0000D17E 1B68 0001 0019             		move.b	1(a0),$19(a5)
+0000D184 4A2D 001B                  		tst.b	$1B(a5)
+0000D188 6600                       		bne.s	loc_71DFE
+0000D18A 1B68 0003 001B             		move.b	3(a0),$1B(a5)
+0000D190 442D 001A                  		neg.b	$1A(a5)
+0000D194 4E75                       		rts	
+0000D196                            ; ===========================================================================
+0000D196                            
+0000D196                            loc_71DFE:
+0000D196 532D 001B                  		subq.b	#1,$1B(a5)
+0000D19A 1C2D 001A                  		move.b	$1A(a5),d6
+0000D19E 4886                       		ext.w	d6
+0000D1A0 DC6D 001C                  		add.w	$1C(a5),d6
+0000D1A4 3B46 001C                  		move.w	d6,$1C(a5)
+0000D1A8 DC6D 0010                  		add.w	$10(a5),d6
+0000D1AC 594F                       		subq.w	#4,sp
+0000D1AE                            
+0000D1AE                            locret_71E16:
+0000D1AE 4E75                       		rts	
+0000D1B0                            ; End of function sub_71DC6
+0000D1B0                            
+0000D1B0                            
+0000D1B0                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D1B0                            
+0000D1B0                            
+0000D1B0                            sub_71E18:				; XREF: sub_71CCA
+0000D1B0 0815 0001                  		btst	#1,(a5)
+0000D1B4 6600                       		bne.s	locret_71E48
+0000D1B6 3C2D 0010                  		move.w	$10(a5),d6
+0000D1BA 6700                       		beq.s	loc_71E4A
+0000D1BC                            
+0000D1BC                            loc_71E24:				; XREF: sub_71CCA
+0000D1BC 102D 001E                  		move.b	$1E(a5),d0
+0000D1C0 4880                       		ext.w	d0
+0000D1C2 DC40                       		add.w	d0,d6
+0000D1C4 0815 0002                  		btst	#2,(a5)
+0000D1C8 6600                       		bne.s	locret_71E48
+0000D1CA 3206                       		move.w	d6,d1
+0000D1CC E049                       		lsr.w	#8,d1
+0000D1CE 103C 00A4                  		move.b	#-$5C,d0
+0000D1D2 4EBA 0000                  		jsr	sub_72722(pc)
+0000D1D6 1206                       		move.b	d6,d1
+0000D1D8 103C 00A0                  		move.b	#-$60,d0
+0000D1DC 4EBA 0000                  		jsr	sub_72722(pc)
+0000D1E0                            
+0000D1E0                            locret_71E48:
+0000D1E0 4E75                       		rts	
+0000D1E2                            ; ===========================================================================
+0000D1E2                            
+0000D1E2                            loc_71E4A:
+0000D1E2 08D5 0001                  		bset	#1,(a5)
+0000D1E6 4E75                       		rts	
+0000D1E8                            ; End of function sub_71E18
+0000D1E8                            
+0000D1E8                            ; ===========================================================================
+0000D1E8                            
+0000D1E8                            loc_71E50:				; XREF: sub_71B4C
+0000D1E8 6B00                       		bmi.s	loc_71E94
+0000D1EA 0C2E 0002 0003             		cmpi.b	#2,3(a6)
+0000D1F0 6700 0000                  		beq.w	loc_71EFE
+0000D1F4 1D7C 0002 0003             		move.b	#2,3(a6)
+0000D1FA 7602                       		moveq	#2,d3
+0000D1FC 103C 00B4                  		move.b	#-$4C,d0
+0000D200 7200                       		moveq	#0,d1
+0000D202                            
+0000D202                            loc_71E6A:
+0000D202 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D206 4EBA 0000                  		jsr	sub_72764(pc)
+0000D20A 5200                       		addq.b	#1,d0
+0000D20C 51CB FFF4                  		dbf	d3,loc_71E6A
+0000D210                            
+0000D210 7602                       		moveq	#2,d3
+0000D212 7028                       		moveq	#$28,d0
+0000D214                            
+0000D214                            loc_71E7C:
+0000D214 1203                       		move.b	d3,d1
+0000D216 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D21A 5801                       		addq.b	#4,d1
+0000D21C 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D220 51CB FFF2                  		dbf	d3,loc_71E7C
+0000D224                            
+0000D224 4EBA 0000                  		jsr	sub_729B6(pc)
+0000D228 6000 FDC8                  		bra.w	loc_71C44
+0000D22C                            ; ===========================================================================
+0000D22C                            
+0000D22C                            loc_71E94:				; XREF: loc_71E50
+0000D22C 422E 0003                  		clr.b	3(a6)
+0000D230 7630                       		moveq	#$30,d3
+0000D232 4BEE 0040                  		lea	$40(a6),a5
+0000D236 7806                       		moveq	#6,d4
+0000D238                            
+0000D238                            loc_71EA0:
+0000D238 0815 0007                  		btst	#7,(a5)
+0000D23C 6700                       		beq.s	loc_71EB8
+0000D23E 0815 0002                  		btst	#2,(a5)
+0000D242 6600                       		bne.s	loc_71EB8
+0000D244 103C 00B4                  		move.b	#-$4C,d0
+0000D248 122D 000A                  		move.b	$A(a5),d1
+0000D24C 4EBA 0000                  		jsr	sub_72722(pc)
+0000D250                            
+0000D250                            loc_71EB8:
+0000D250 DAC3                       		adda.w	d3,a5
+0000D252 51CC FFE4                  		dbf	d4,loc_71EA0
+0000D256                            
+0000D256 4BEE 0220                  		lea	$220(a6),a5
+0000D25A 7802                       		moveq	#2,d4
+0000D25C                            
+0000D25C                            loc_71EC4:
+0000D25C 0815 0007                  		btst	#7,(a5)
+0000D260 6700                       		beq.s	loc_71EDC
+0000D262 0815 0002                  		btst	#2,(a5)
+0000D266 6600                       		bne.s	loc_71EDC
+0000D268 103C 00B4                  		move.b	#-$4C,d0
+0000D26C 122D 000A                  		move.b	$A(a5),d1
+0000D270 4EBA 0000                  		jsr	sub_72722(pc)
+0000D274                            
+0000D274                            loc_71EDC:
+0000D274 DAC3                       		adda.w	d3,a5
+0000D276 51CC FFE4                  		dbf	d4,loc_71EC4
+0000D27A                            
+0000D27A 4BEE 0340                  		lea	$340(a6),a5
+0000D27E 0815 0007                  		btst	#7,(a5)
+0000D282 6700                       		beq.s	loc_71EFE
+0000D284 0815 0002                  		btst	#2,(a5)
+0000D288 6600                       		bne.s	loc_71EFE
+0000D28A 103C 00B4                  		move.b	#-$4C,d0
+0000D28E 122D 000A                  		move.b	$A(a5),d1
+0000D292 4EBA 0000                  		jsr	sub_72722(pc)
+0000D296                            
+0000D296                            loc_71EFE:
+0000D296 6000 FD5A                  		bra.w	loc_71C44
+0000D29A                            
+0000D29A                            ; ---------------------------------------------------------------------------
+0000D29A                            ; Subroutine to	play a sound or	music track
+0000D29A                            ; ---------------------------------------------------------------------------
+0000D29A                            
+0000D29A                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D29A                            
+0000D29A                            
+0000D29A                            Sound_Play:				; XREF: sub_71B4C
+0000D29A 2079 0000 CD1E             		movea.l	(Go_SoundTypes).l,a0
+0000D2A0 43EE 000A                  		lea	$A(a6),a1	; load music track number
+0000D2A4 162E 0000                  		move.b	0(a6),d3
+0000D2A8 7802                       		moveq	#2,d4
+0000D2AA                            
+0000D2AA                            loc_71F12:
+0000D2AA 1011                       		move.b	(a1),d0		; move track number to d0
+0000D2AC 1200                       		move.b	d0,d1
+0000D2AE 4219                       		clr.b	(a1)+
+0000D2B0 0400 0081                  		subi.b	#$81,d0
+0000D2B4 6500                       		bcs.s	loc_71F3E
+0000D2B6 0C2E 0080 0009             		cmpi.b	#$80,9(a6)
+0000D2BC 6700                       		beq.s	loc_71F2C
+0000D2BE 1D41 000A                  		move.b	d1,$A(a6)
+0000D2C2 6000                       		bra.s	loc_71F3E
+0000D2C4                            ; ===========================================================================
+0000D2C4                            
+0000D2C4                            loc_71F2C:
+0000D2C4 0240 007F                  		andi.w	#$7F,d0
+0000D2C8 1430 0000                  		move.b	(a0,d0.w),d2
+0000D2CC B403                       		cmp.b	d3,d2
+0000D2CE 6500                       		bcs.s	loc_71F3E
+0000D2D0 1602                       		move.b	d2,d3
+0000D2D2 1D41 0009                  		move.b	d1,9(a6)	; set music flag
+0000D2D6                            
+0000D2D6                            loc_71F3E:
+0000D2D6 51CC FFD2                  		dbf	d4,loc_71F12
+0000D2DA                            
+0000D2DA 4A03                       		tst.b	d3
+0000D2DC 6B00                       		bmi.s	locret_71F4A
+0000D2DE 1D43 0000                  		move.b	d3,0(a6)
+0000D2E2                            
+0000D2E2                            locret_71F4A:
+0000D2E2 4E75                       		rts	
+0000D2E4                            ; End of function Sound_Play
+0000D2E4                            
+0000D2E4                            
+0000D2E4                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D2E4                            
+0000D2E4                            
+0000D2E4                            Sound_ChkValue:				; XREF: sub_71B4C
+0000D2E4 7E00                       		moveq	#0,d7
+0000D2E6 1E2E 0009                  		move.b	9(a6),d7
+0000D2EA 6700 0000                  		beq.w	Sound_E4
+0000D2EE 6A00                       		bpl.s	locret_71F8C
+0000D2F0 1D7C 0080 0009             		move.b	#$80,9(a6)	; reset	music flag
+0000D2F6                            
+0000D2F6                            	;	cmpi.b  #$FF,d7
+0000D2F6                            	;	bge.s Sound_E0toF8
+0000D2F6 0C07 009F                  		cmpi.b	#$9F,d7
+0000D2FA 6F00 0000                  		ble.w	Sound_81To9F	
+0000D2FE 0C07 00F0                  		cmpi.b	#$F0,d7
+0000D302 6F00 0000                  		ble.w	Sound_A0ToCF
+0000D306 0C07 00F9                  		cmpi.b	#$F9,d7
+0000D30A 6C00 0000                  		bge.w	Sound_E0toE4
+0000D30E                            
+0000D30E                            locret_71F8C:
+0000D30E                            
+0000D30E 4E75                       		rts	
+0000D310                            
+0000D310                            ; ===========================================================================
+0000D310                            
+0000D310                            Sound_E0toE4:				; XREF: Sound_ChkValue
+0000D310                            		;subi.b	#$E0,d7
+0000D310 0407 00F9                  		subi.b	#$F9, D7
+0000D314 E54F                       		lsl.w	#2,d7
+0000D316 4EFB 7000                  		jmp	Sound_ExIndex(pc,d7.w)
+0000D31A                            ; ===========================================================================
+0000D31A                            
+0000D31A                            Sound_ExIndex:
+0000D31A 6000 0000                  		bra.w	Sound_E0
+0000D31E                            ; ===========================================================================
+0000D31E 6000 0000                  		bra.w	Sound_E1
+0000D322                            ; ===========================================================================
+0000D322 6000 0000                  		bra.w	Sound_E2
+0000D326                            ; ===========================================================================
+0000D326 6000 0000                  		bra.w	Sound_E3
+0000D32A                            ; ===========================================================================
+0000D32A 6000 0000                  		bra.w	Sound_E4
+0000D32E                            ; ===========================================================================
+0000D32E                            ; ---------------------------------------------------------------------------
+0000D32E                            ; Play "Say-gaa" PCM sound
+0000D32E                            ; ---------------------------------------------------------------------------
+0000D32E                            
+0000D32E                            Sound_E1:				; XREF: Sound_ExIndex
+0000D32E 13FC 0088 00A0 1FFF        		move.b	#$88,($A01FFF).l
+0000D336 33FC 0000 00A1 1100        		move.w	#0,($A11100).l	; start	the Z80
+0000D33E 323C 0011                  		move.w	#$11,d1
+0000D342                            
+0000D342                            loc_71FC0:
+0000D342 303C FFFF                  		move.w	#-1,d0
+0000D346                            
+0000D346                            loc_71FC4:
+0000D346 4E71                       		nop	
+0000D348 51C8 FFFC                  		dbf	d0,loc_71FC4
+0000D34C                            
+0000D34C 51C9 FFF4                  		dbf	d1,loc_71FC0
+0000D350                            
+0000D350 584F                       		addq.w	#4,sp
+0000D352 4E75                       		rts	
+0000D354                            ; ===========================================================================
+0000D354                            ; ---------------------------------------------------------------------------
+0000D354                            ; Play music track $81-$9F
+0000D354                            ; ---------------------------------------------------------------------------
+0000D354                            
+0000D354                            Sound_81to9F:				; XREF: Sound_ChkValue
+0000D354 0C07 0098                  		cmpi.b	#$98,d7		; is "extra life" music	played?
+0000D358 6600                       		bne.s	loc_72024	; if not, branch
+0000D35A 4A2E 0027                  		tst.b	$27(a6)
+0000D35E 6600 0000                  		bne.w	loc_721B6
+0000D362 4BEE 0040                  		lea	$40(a6),a5
+0000D366 7009                       		moveq	#9,d0
+0000D368                            
+0000D368                            loc_71FE6:
+0000D368 0895 0002                  		bclr	#2,(a5)
+0000D36C DAFC 0030                  		adda.w	#$30,a5
+0000D370 51C8 FFF6                  		dbf	d0,loc_71FE6
+0000D374                            
+0000D374 4BEE 0220                  		lea	$220(a6),a5
+0000D378 7005                       		moveq	#5,d0
+0000D37A                            
+0000D37A                            loc_71FF8:
+0000D37A 0895 0007                  		bclr	#7,(a5)
+0000D37E DAFC 0030                  		adda.w	#$30,a5
+0000D382 51C8 FFF6                  		dbf	d0,loc_71FF8
+0000D386 422E 0000                  		clr.b	0(a6)
+0000D38A 204E                       		movea.l	a6,a0
+0000D38C 43EE 03A0                  		lea	$3A0(a6),a1
+0000D390 303C 0087                  		move.w	#$87,d0
+0000D394                            
+0000D394                            loc_72012:
+0000D394 22D8                       		move.l	(a0)+,(a1)+
+0000D396 51C8 FFFC                  		dbf	d0,loc_72012
+0000D39A                            
+0000D39A 1D7C 0080 0027             		move.b	#$80,$27(a6)
+0000D3A0 422E 0000                  		clr.b	0(a6)
+0000D3A4 6000                       		bra.s	loc_7202C
+0000D3A6                            ; ===========================================================================
+0000D3A6                            
+0000D3A6                            loc_72024:
+0000D3A6 422E 0027                  		clr.b	$27(a6)
+0000D3AA 422E 0026                  		clr.b	$26(a6)
+0000D3AE                            
+0000D3AE                            loc_7202C:
+0000D3AE 4EBA 0000                  		jsr	sub_725CA(pc)
+0000D3B2 2879 0000 CD2A             		movea.l	(off_719A0).l,a4
+0000D3B8 0407 0081                  		subi.b	#$81,d7
+0000D3BC 1D74 7000 0029             		move.b	(a4,d7.w),$29(a6)
+0000D3C2 2879 0000 CD22             		movea.l	(Go_MusicIndex).l,a4
+0000D3C8 E54F                       		lsl.w	#2,d7
+0000D3CA 2874 7000                  		movea.l	(a4,d7.w),a4
+0000D3CE 7000                       		moveq	#0,d0
+0000D3D0 3014                       		move.w	(a4),d0
+0000D3D2 D08C                       		add.l	a4,d0
+0000D3D4 2D40 0018                  		move.l	d0,$18(a6)
+0000D3D8 102C 0005                  		move.b	5(a4),d0
+0000D3DC 1D40 0028                  		move.b	d0,$28(a6)
+0000D3E0 4A2E 002A                  		tst.b	$2A(a6)
+0000D3E4 6700                       		beq.s	loc_72068
+0000D3E6 102E 0029                  		move.b	$29(a6),d0
+0000D3EA                            
+0000D3EA                            loc_72068:
+0000D3EA 1D40 0002                  		move.b	d0,2(a6)
+0000D3EE 1D40 0001                  		move.b	d0,1(a6)
+0000D3F2 7200                       		moveq	#0,d1
+0000D3F4 264C                       		movea.l	a4,a3
+0000D3F6 5C4C                       		addq.w	#6,a4
+0000D3F8 7E00                       		moveq	#0,d7
+0000D3FA 1E2B 0002                  		move.b	2(a3),d7
+0000D3FE 6700 0000                  		beq.w	loc_72114
+0000D402 5307                       		subq.b	#1,d7
+0000D404 123C 00C0                  		move.b	#-$40,d1
+0000D408 182B 0004                  		move.b	4(a3),d4
+0000D40C 7C30                       		moveq	#$30,d6
+0000D40E 1A3C 0001                  		move.b	#1,d5
+0000D412 43EE 0040                  		lea	$40(a6),a1
+0000D416 45FA 0000                  		lea	byte_721BA(pc),a2
+0000D41A                            
+0000D41A                            loc_72098:
+0000D41A 08D1 0007                  		bset	#7,(a1)
+0000D41E 135A 0001                  		move.b	(a2)+,1(a1)
+0000D422 1344 0002                  		move.b	d4,2(a1)
+0000D426 1346 000D                  		move.b	d6,$D(a1)
+0000D42A 1341 000A                  		move.b	d1,$A(a1)
+0000D42E 1345 000E                  		move.b	d5,$E(a1)
+0000D432 7000                       		moveq	#0,d0
+0000D434 301C                       		move.w	(a4)+,d0
+0000D436 D08B                       		add.l	a3,d0
+0000D438 2340 0004                  		move.l	d0,4(a1)
+0000D43C 335C 0008                  		move.w	(a4)+,8(a1)
+0000D440 D2C6                       		adda.w	d6,a1
+0000D442 51CF FFD6                  		dbf	d7,loc_72098
+0000D446 0C2B 0007 0002             		cmpi.b	#7,2(a3)
+0000D44C 6600                       		bne.s	loc_720D8
+0000D44E 702B                       		moveq	#$2B,d0
+0000D450 7200                       		moveq	#0,d1
+0000D452 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D456 6000 0000                  		bra.w	loc_72114
+0000D45A                            ; ===========================================================================
+0000D45A                            
+0000D45A                            loc_720D8:
+0000D45A 7028                       		moveq	#$28,d0
+0000D45C 7206                       		moveq	#6,d1
+0000D45E 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D462 103C 0042                  		move.b	#$42,d0
+0000D466 727F                       		moveq	#$7F,d1
+0000D468 4EBA 0000                  		jsr	sub_72764(pc)
+0000D46C 103C 004A                  		move.b	#$4A,d0
+0000D470 727F                       		moveq	#$7F,d1
+0000D472 4EBA 0000                  		jsr	sub_72764(pc)
+0000D476 103C 0046                  		move.b	#$46,d0
+0000D47A 727F                       		moveq	#$7F,d1
+0000D47C 4EBA 0000                  		jsr	sub_72764(pc)
+0000D480 103C 004E                  		move.b	#$4E,d0
+0000D484 727F                       		moveq	#$7F,d1
+0000D486 4EBA 0000                  		jsr	sub_72764(pc)
+0000D48A 103C 00B6                  		move.b	#-$4A,d0
+0000D48E 123C 00C0                  		move.b	#-$40,d1
+0000D492 4EBA 0000                  		jsr	sub_72764(pc)
+0000D496                            
+0000D496                            loc_72114:
+0000D496 7E00                       		moveq	#0,d7
+0000D498 1E2B 0003                  		move.b	3(a3),d7
+0000D49C 6700                       		beq.s	loc_72154
+0000D49E 5307                       		subq.b	#1,d7
+0000D4A0 43EE 0190                  		lea	$190(a6),a1
+0000D4A4 45FA 0000                  		lea	byte_721C2(pc),a2
+0000D4A8                            
+0000D4A8                            loc_72126:
+0000D4A8 08D1 0007                  		bset	#7,(a1)
+0000D4AC 135A 0001                  		move.b	(a2)+,1(a1)
+0000D4B0 1344 0002                  		move.b	d4,2(a1)
+0000D4B4 1346 000D                  		move.b	d6,$D(a1)
+0000D4B8 1345 000E                  		move.b	d5,$E(a1)
+0000D4BC 7000                       		moveq	#0,d0
+0000D4BE 301C                       		move.w	(a4)+,d0
+0000D4C0 D08B                       		add.l	a3,d0
+0000D4C2 2340 0004                  		move.l	d0,4(a1)
+0000D4C6 335C 0008                  		move.w	(a4)+,8(a1)
+0000D4CA 101C                       		move.b	(a4)+,d0
+0000D4CC 135C 000B                  		move.b	(a4)+,$B(a1)
+0000D4D0 D2C6                       		adda.w	d6,a1
+0000D4D2 51CF FFD4                  		dbf	d7,loc_72126
+0000D4D6                            
+0000D4D6                            loc_72154:
+0000D4D6 43EE 0220                  		lea	$220(a6),a1
+0000D4DA 7E05                       		moveq	#5,d7
+0000D4DC                            
+0000D4DC                            loc_7215A:
+0000D4DC 4A11                       		tst.b	(a1)
+0000D4DE 6A00 0000                  		bpl.w	loc_7217C
+0000D4E2 7000                       		moveq	#0,d0
+0000D4E4 1029 0001                  		move.b	1(a1),d0
+0000D4E8 6B00                       		bmi.s	loc_7216E
+0000D4EA 5500                       		subq.b	#2,d0
+0000D4EC E508                       		lsl.b	#2,d0
+0000D4EE 6000                       		bra.s	loc_72170
+0000D4F0                            ; ===========================================================================
+0000D4F0                            
+0000D4F0                            loc_7216E:
+0000D4F0 E608                       		lsr.b	#3,d0
+0000D4F2                            
+0000D4F2                            loc_72170:
+0000D4F2 41FA 0000                  		lea	dword_722CC(pc),a0
+0000D4F6 2070 0000                  		movea.l	(a0,d0.w),a0
+0000D4FA 08D0 0002                  		bset	#2,(a0)
+0000D4FE                            
+0000D4FE                            loc_7217C:
+0000D4FE D2C6                       		adda.w	d6,a1
+0000D500 51CF FFDA                  		dbf	d7,loc_7215A
+0000D504                            
+0000D504 4A6E 0340                  		tst.w	$340(a6)
+0000D508 6A00                       		bpl.s	loc_7218E
+0000D50A 08EE 0002 0100             		bset	#2,$100(a6)
+0000D510                            
+0000D510                            loc_7218E:
+0000D510 4A6E 0370                  		tst.w	$370(a6)
+0000D514 6A00                       		bpl.s	loc_7219A
+0000D516 08EE 0002 01F0             		bset	#2,$1F0(a6)
+0000D51C                            
+0000D51C                            loc_7219A:
+0000D51C 4BEE 0070                  		lea	$70(a6),a5
+0000D520 7805                       		moveq	#5,d4
+0000D522                            
+0000D522                            loc_721A0:
+0000D522 4EBA 0000                  		jsr	sub_726FE(pc)
+0000D526 DAC6                       		adda.w	d6,a5
+0000D528 51CC FFF8                  		dbf	d4,loc_721A0
+0000D52C 7802                       		moveq	#2,d4
+0000D52E                            
+0000D52E                            loc_721AC:
+0000D52E 4EBA 0000                  		jsr	sub_729A0(pc)
+0000D532 DAC6                       		adda.w	d6,a5
+0000D534 51CC FFF8                  		dbf	d4,loc_721AC
+0000D538                            
+0000D538                            loc_721B6:
+0000D538 584F                       		addq.w	#4,sp
+0000D53A 4E75                       		rts	
+0000D53C                            ; ===========================================================================
+0000D53C 0600 0102 0405 0600        byte_721BA:	dc.b 6,	0, 1, 2, 4, 5, 6, 0
+0000D544                            		even
+0000D544 80A0 C000                  byte_721C2:	dc.b $80, $A0, $C0, 0
+0000D548                            		even
+0000D548                            ; ===========================================================================
+0000D548                            ; ---------------------------------------------------------------------------
+0000D548                            ; Play normal sound effect
+0000D548                            ; ---------------------------------------------------------------------------
+0000D548                            
+0000D548                            Sound_A0toCF:				; XREF: Sound_ChkValue
+0000D548 4A2E 0027                  		tst.b	$27(a6)
+0000D54C 6600 0000                  		bne.w	loc_722C6
+0000D550 4A2E 0004                  		tst.b	4(a6)
+0000D554 6600 0000                  		bne.w	loc_722C6
+0000D558 4A2E 0024                  		tst.b	$24(a6)
+0000D55C 6600 0000                  		bne.w	loc_722C6
+0000D560 0C07 00B5                  		cmpi.b	#$B5,d7		; is ring sound	effect played?
+0000D564 6600                       		bne.s	Sound_notB5	; if not, branch
+0000D566 4A2E 002B                  		tst.b	$2B(a6)
+0000D56A 6600                       		bne.s	loc_721EE
+0000D56C 1E3C 00CE                  		move.b	#$CE,d7		; play ring sound in left speaker
+0000D570                            
+0000D570                            loc_721EE:
+0000D570 086E 0000 002B             		bchg	#0,$2B(a6)	; change speaker
+0000D576                            
+0000D576                            Sound_notB5:
+0000D576                            		;cmpi.b	#$A7,d7		; is "pushing" sound played?
+0000D576                            		;bne.s	Sound_notA7	; if not, branch
+0000D576 6000                       		bra.s	Sound_notA7
+0000D578 4A2E 002C                  		tst.b	$2C(a6)
+0000D57C 6600 0000                  		bne.w	locret_722C4
+0000D580 1D7C 0080 002C             		move.b	#$80,$2C(a6)
+0000D586                            
+0000D586                            Sound_notA7:
+0000D586 2079 0000 CD26             		movea.l	(Go_SoundIndex).l,a0
+0000D58C 0407 00A0                  		subi.b	#$A0,d7
+0000D590                            		
+0000D590                            SFX_Continue:
+0000D590 E54F                       		lsl.w	#2,d7
+0000D592 2670 7000                  		movea.l	(a0,d7.w),a3
+0000D596 224B                       		movea.l	a3,a1
+0000D598 7200                       		moveq	#0,d1
+0000D59A 3219                       		move.w	(a1)+,d1
+0000D59C D28B                       		add.l	a3,d1
+0000D59E 1A19                       		move.b	(a1)+,d5
+0000D5A0 1E19                       		move.b	(a1)+,d7
+0000D5A2 5307                       		subq.b	#1,d7
+0000D5A4 7C30                       		moveq	#$30,d6
+0000D5A6                            
+0000D5A6                            loc_72228:
+0000D5A6 7600                       		moveq	#0,d3
+0000D5A8 1629 0001                  		move.b	1(a1),d3
+0000D5AC 1803                       		move.b	d3,d4
+0000D5AE 6B00                       		bmi.s	loc_72244
+0000D5B0 5543                       		subq.w	#2,d3
+0000D5B2 E54B                       		lsl.w	#2,d3
+0000D5B4 4BFA 0000                  		lea	dword_722CC(pc),a5
+0000D5B8 2A75 3000                  		movea.l	(a5,d3.w),a5
+0000D5BC 08D5 0002                  		bset	#2,(a5)
+0000D5C0 6000                       		bra.s	loc_7226E
+0000D5C2                            ; ===========================================================================
+0000D5C2                            
+0000D5C2                            loc_72244:
+0000D5C2 E64B                       		lsr.w	#3,d3
+0000D5C4 4BFA 0000                  		lea	dword_722CC(pc),a5
+0000D5C8 2A75 3000                  		movea.l	(a5,d3.w),a5
+0000D5CC 08D5 0002                  		bset	#2,(a5)
+0000D5D0 0C04 00C0                  		cmpi.b	#$C0,d4
+0000D5D4 6600                       		bne.s	loc_7226E
+0000D5D6 1004                       		move.b	d4,d0
+0000D5D8 0000 001F                  		ori.b	#$1F,d0
+0000D5DC 13C0 00C0 0011             		move.b	d0,($C00011).l
+0000D5E2 0840 0005                  		bchg	#5,d0
+0000D5E6 13C0 00C0 0011             		move.b	d0,($C00011).l
+0000D5EC                            
+0000D5EC                            loc_7226E:
+0000D5EC 2A7B 3000                  		movea.l	dword_722EC(pc,d3.w),a5
+0000D5F0 244D                       		movea.l	a5,a2
+0000D5F2 700B                       		moveq	#$B,d0
+0000D5F4                            
+0000D5F4                            loc_72276:
+0000D5F4 429A                       		clr.l	(a2)+
+0000D5F6 51C8 FFFC                  		dbf	d0,loc_72276
+0000D5FA                            
+0000D5FA 3A99                       		move.w	(a1)+,(a5)
+0000D5FC 1B45 0002                  		move.b	d5,2(a5)
+0000D600 7000                       		moveq	#0,d0
+0000D602 3019                       		move.w	(a1)+,d0
+0000D604 D08B                       		add.l	a3,d0
+0000D606 2B40 0004                  		move.l	d0,4(a5)
+0000D60A 3B59 0008                  		move.w	(a1)+,8(a5)
+0000D60E 1B7C 0001 000E             		move.b	#1,$E(a5)
+0000D614 1B46 000D                  		move.b	d6,$D(a5)
+0000D618 4A04                       		tst.b	d4
+0000D61A 6B00                       		bmi.s	loc_722A8
+0000D61C 1B7C 00C0 000A             		move.b	#$C0,$A(a5)
+0000D622 2B41 0020                  		move.l	d1,$20(a5)
+0000D626                            
+0000D626                            loc_722A8:
+0000D626 51CF FF7E                  		dbf	d7,loc_72228
+0000D62A                            
+0000D62A 4A2E 0250                  		tst.b	$250(a6)
+0000D62E 6A00                       		bpl.s	loc_722B8
+0000D630 08EE 0002 0340             		bset	#2,$340(a6)
+0000D636                            
+0000D636                            loc_722B8:
+0000D636 4A2E 0310                  		tst.b	$310(a6)
+0000D63A 6A00                       		bpl.s	locret_722C4
+0000D63C 08EE 0002 0370             		bset	#2,$370(a6)
+0000D642                            
+0000D642                            locret_722C4:
+0000D642 4E75                       		rts	
+0000D644                            ; ===========================================================================
+0000D644                            
+0000D644                            loc_722C6:
+0000D644 422E 0000                  		clr.b	0(a6)
+0000D648 4E75                       		rts	
+0000D64A                            ; ===========================================================================
+0000D64A 00FF F0D0                  dword_722CC:	dc.l $FFF0D0
+0000D64E 0000 0000                  		dc.l 0
+0000D652 00FF F100                  		dc.l $FFF100
+0000D656 00FF F130                  		dc.l $FFF130
+0000D65A 00FF F190                  		dc.l $FFF190
+0000D65E 00FF F1C0                  		dc.l $FFF1C0
+0000D662 00FF F1F0                  		dc.l $FFF1F0
+0000D666 00FF F1F0                  		dc.l $FFF1F0
+0000D66A 00FF F220                  dword_722EC:	dc.l $FFF220
+0000D66E 0000 0000                  		dc.l 0
+0000D672 00FF F250                  		dc.l $FFF250
+0000D676 00FF F280                  		dc.l $FFF280
+0000D67A 00FF F2B0                  		dc.l $FFF2B0
+0000D67E 00FF F2E0                  		dc.l $FFF2E0
+0000D682 00FF F310                  		dc.l $FFF310
+0000D686 00FF F310                  		dc.l $FFF310
+0000D68A                            ; ===========================================================================
+0000D68A                            ; ---------------------------------------------------------------------------
+0000D68A                            ; Play GHZ waterfall sound
+0000D68A                            ; ---------------------------------------------------------------------------
+0000D68A                            
+0000D68A                            Sound_D0toDF:				; XREF: Sound_ChkValue
+0000D68A 4E75                                        rts
+0000D68C                            
+0000D68C 4A2E 0027                  		tst.b	$27(a6)
+0000D690 6600 0000                  		bne.w	locret_723C6
+0000D694 4A2E 0004                  		tst.b	4(a6)
+0000D698 6600 0000                  		bne.w	locret_723C6
+0000D69C 4A2E 0024                  		tst.b	$24(a6)
+0000D6A0 6600 0000                  		bne.w	locret_723C6
+0000D6A4                            	;	movea.l	(Go_SoundD0).l,a0
+0000D6A4 0407 00D0                  		subi.b	#$D0,d7
+0000D6A8 E54F                       		lsl.w	#2,d7
+0000D6AA 2670 7000                  		movea.l	(a0,d7.w),a3
+0000D6AE 224B                       		movea.l	a3,a1
+0000D6B0 7000                       		moveq	#0,d0
+0000D6B2 3019                       		move.w	(a1)+,d0
+0000D6B4 D08B                       		add.l	a3,d0
+0000D6B6 2D40 0020                  		move.l	d0,$20(a6)
+0000D6BA 1A19                       		move.b	(a1)+,d5
+0000D6BC 1E19                       		move.b	(a1)+,d7
+0000D6BE 5307                       		subq.b	#1,d7
+0000D6C0 7C30                       		moveq	#$30,d6
+0000D6C2                            
+0000D6C2                            loc_72348:
+0000D6C2 1829 0001                  		move.b	1(a1),d4
+0000D6C6 6B00                       		bmi.s	loc_7235A
+0000D6C8 08EE 0002 0100             		bset	#2,$100(a6)
+0000D6CE 4BEE 0340                  		lea	$340(a6),a5
+0000D6D2 6000                       		bra.s	loc_72364
+0000D6D4                            ; ===========================================================================
+0000D6D4                            
+0000D6D4                            loc_7235A:
+0000D6D4 08EE 0002 01F0             		bset	#2,$1F0(a6)
+0000D6DA 4BEE 0370                  		lea	$370(a6),a5
+0000D6DE                            
+0000D6DE                            loc_72364:
+0000D6DE 244D                       		movea.l	a5,a2
+0000D6E0 700B                       		moveq	#$B,d0
+0000D6E2                            
+0000D6E2                            loc_72368:
+0000D6E2 429A                       		clr.l	(a2)+
+0000D6E4 51C8 FFFC                  		dbf	d0,loc_72368
+0000D6E8                            
+0000D6E8 3A99                       		move.w	(a1)+,(a5)
+0000D6EA 1B45 0002                  		move.b	d5,2(a5)
+0000D6EE 7000                       		moveq	#0,d0
+0000D6F0 3019                       		move.w	(a1)+,d0
+0000D6F2 D08B                       		add.l	a3,d0
+0000D6F4 2B40 0004                  		move.l	d0,4(a5)
+0000D6F8 3B59 0008                  		move.w	(a1)+,8(a5)
+0000D6FC 1B7C 0001 000E             		move.b	#1,$E(a5)
+0000D702 1B46 000D                  		move.b	d6,$D(a5)
+0000D706 4A04                       		tst.b	d4
+0000D708 6B00                       		bmi.s	loc_72396
+0000D70A 1B7C 00C0 000A             		move.b	#$C0,$A(a5)
+0000D710                            
+0000D710                            loc_72396:
+0000D710 51CF FFB0                  		dbf	d7,loc_72348
+0000D714                            
+0000D714 4A2E 0250                  		tst.b	$250(a6)
+0000D718 6A00                       		bpl.s	loc_723A6
+0000D71A 08EE 0002 0340             		bset	#2,$340(a6)
+0000D720                            
+0000D720                            loc_723A6:
+0000D720 4A2E 0310                  		tst.b	$310(a6)
+0000D724 6A00                       		bpl.s	locret_723C6
+0000D726 08EE 0002 0370             		bset	#2,$370(a6)
+0000D72C 0004 001F                  		ori.b	#$1F,d4
+0000D730 13C4 00C0 0011             		move.b	d4,($C00011).l
+0000D736 0844 0005                  		bchg	#5,d4
+0000D73A 13C4 00C0 0011             		move.b	d4,($C00011).l
+0000D740                            
+0000D740                            locret_723C6:
+0000D740 4E75                       		rts	
+0000D742                            ; End of function Sound_ChkValue
+0000D742                            
+0000D742                            ; ===========================================================================
+0000D742 00FF F100                  		dc.l $FFF100
+0000D746 00FF F1F0                  		dc.l $FFF1F0
+0000D74A 00FF F250                  		dc.l $FFF250
+0000D74E 00FF F310                  		dc.l $FFF310
+0000D752 00FF F340                  		dc.l $FFF340
+0000D756 00FF F370                  		dc.l $FFF370
+0000D75A                            
+0000D75A                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D75A                            
+0000D75A                            
+0000D75A                            Snd_FadeOut1:				; XREF: Sound_E0
+0000D75A 422E 0000                  		clr.b	0(a6)
+0000D75E 4BEE 0220                  		lea	$220(a6),a5
+0000D762 7E05                       		moveq	#5,d7
+0000D764                            
+0000D764                            loc_723EA:
+0000D764 4A15                       		tst.b	(a5)
+0000D766 6A00 0000                  		bpl.w	loc_72472
+0000D76A 0895 0007                  		bclr	#7,(a5)
+0000D76E 7600                       		moveq	#0,d3
+0000D770 162D 0001                  		move.b	1(a5),d3
+0000D774 6B00                       		bmi.s	loc_7243C
+0000D776 4EBA 0000                  		jsr	sub_726FE(pc)
+0000D77A 0C03 0004                  		cmpi.b	#4,d3
+0000D77E 6600                       		bne.s	loc_72416
+0000D780 4A2E 0340                  		tst.b	$340(a6)
+0000D784 6A00                       		bpl.s	loc_72416
+0000D786 4BEE 0340                  		lea	$340(a6),a5
+0000D78A 226E 0020                  		movea.l	$20(a6),a1
+0000D78E 6000                       		bra.s	loc_72428
+0000D790                            ; ===========================================================================
+0000D790                            
+0000D790                            loc_72416:
+0000D790 5503                       		subq.b	#2,d3
+0000D792 E50B                       		lsl.b	#2,d3
+0000D794 41FA FEB4                  		lea	dword_722CC(pc),a0
+0000D798 264D                       		movea.l	a5,a3
+0000D79A 2A70 3000                  		movea.l	(a0,d3.w),a5
+0000D79E 226E 0018                  		movea.l	$18(a6),a1
+0000D7A2                            
+0000D7A2                            loc_72428:
+0000D7A2 0895 0002                  		bclr	#2,(a5)
+0000D7A6 08D5 0001                  		bset	#1,(a5)
+0000D7AA 102D 000B                  		move.b	$B(a5),d0
+0000D7AE 4EBA 0000                  		jsr	sub_72C4E(pc)
+0000D7B2 2A4B                       		movea.l	a3,a5
+0000D7B4 6000                       		bra.s	loc_72472
+0000D7B6                            ; ===========================================================================
+0000D7B6                            
+0000D7B6                            loc_7243C:
+0000D7B6 4EBA 0000                  		jsr	sub_729A0(pc)
+0000D7BA 41EE 0370                  		lea	$370(a6),a0
+0000D7BE 0C03 00E0                  		cmpi.b	#$E0,d3
+0000D7C2 6700                       		beq.s	loc_7245A
+0000D7C4 0C03 00C0                  		cmpi.b	#$C0,d3
+0000D7C8 6700                       		beq.s	loc_7245A
+0000D7CA E60B                       		lsr.b	#3,d3
+0000D7CC 41FA FE7C                  		lea	dword_722CC(pc),a0
+0000D7D0 2070 3000                  		movea.l	(a0,d3.w),a0
+0000D7D4                            
+0000D7D4                            loc_7245A:
+0000D7D4 0890 0002                  		bclr	#2,(a0)
+0000D7D8 08D0 0001                  		bset	#1,(a0)
+0000D7DC 0C28 00E0 0001             		cmpi.b	#$E0,1(a0)
+0000D7E2 6600                       		bne.s	loc_72472
+0000D7E4 13E8 001F 00C0 0011        		move.b	$1F(a0),($C00011).l
+0000D7EC                            
+0000D7EC                            loc_72472:
+0000D7EC DAFC 0030                  		adda.w	#$30,a5
+0000D7F0 51CF FF72                  		dbf	d7,loc_723EA
+0000D7F4                            
+0000D7F4 4E75                       		rts	
+0000D7F6                            ; End of function Snd_FadeOut1
+0000D7F6                            
+0000D7F6                            
+0000D7F6                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D7F6                            
+0000D7F6                            
+0000D7F6                            Snd_FadeOut2:				; XREF: Sound_E0
+0000D7F6 4BEE 0340                  		lea	$340(a6),a5
+0000D7FA 4A15                       		tst.b	(a5)
+0000D7FC 6A00                       		bpl.s	loc_724AE
+0000D7FE 0895 0007                  		bclr	#7,(a5)
+0000D802 0815 0002                  		btst	#2,(a5)
+0000D806 6600                       		bne.s	loc_724AE
+0000D808 4EBA 0000                  		jsr	loc_7270A(pc)
+0000D80C 4BEE 0100                  		lea	$100(a6),a5
+0000D810 0895 0002                  		bclr	#2,(a5)
+0000D814 08D5 0001                  		bset	#1,(a5)
+0000D818 4A15                       		tst.b	(a5)
+0000D81A 6A00                       		bpl.s	loc_724AE
+0000D81C 226E 0018                  		movea.l	$18(a6),a1
+0000D820 102D 000B                  		move.b	$B(a5),d0
+0000D824 4EBA 0000                  		jsr	sub_72C4E(pc)
+0000D828                            
+0000D828                            loc_724AE:
+0000D828 4BEE 0370                  		lea	$370(a6),a5
+0000D82C 4A15                       		tst.b	(a5)
+0000D82E 6A00                       		bpl.s	locret_724E4
+0000D830 0895 0007                  		bclr	#7,(a5)
+0000D834 0815 0002                  		btst	#2,(a5)
+0000D838 6600                       		bne.s	locret_724E4
+0000D83A 4EBA 0000                  		jsr	loc_729A6(pc)
+0000D83E 4BEE 01F0                  		lea	$1F0(a6),a5
+0000D842 0895 0002                  		bclr	#2,(a5)
+0000D846 08D5 0001                  		bset	#1,(a5)
+0000D84A 4A15                       		tst.b	(a5)
+0000D84C 6A00                       		bpl.s	locret_724E4
+0000D84E 0C2D 00E0 0001             		cmpi.b	#-$20,1(a5)
+0000D854 6600                       		bne.s	locret_724E4
+0000D856 13ED 001F 00C0 0011        		move.b	$1F(a5),($C00011).l
+0000D85E                            
+0000D85E                            locret_724E4:
+0000D85E 4E75                       		rts	
+0000D860                            ; End of function Snd_FadeOut2
+0000D860                            
+0000D860                            ; ===========================================================================
+0000D860                            ; ---------------------------------------------------------------------------
+0000D860                            ; Fade out music
+0000D860                            ; ---------------------------------------------------------------------------
+0000D860                            
+0000D860                            Sound_E0:				; XREF: Sound_ExIndex
+0000D860 4EBA FEF8                  		jsr	Snd_FadeOut1(pc)
+0000D864 4EBA FF90                  		jsr	Snd_FadeOut2(pc)
+0000D868 1D7C 0003 0006             		move.b	#3,6(a6)
+0000D86E 1D7C 0028 0004             		move.b	#$28,4(a6)
+0000D874 422E 0040                  		clr.b	$40(a6)
+0000D878 422E 002A                  		clr.b	$2A(a6)
+0000D87C 4E75                       		rts	
+0000D87E                            
+0000D87E                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D87E                            
+0000D87E                            
+0000D87E                            sub_72504:				; XREF: sub_71B4C
+0000D87E 102E 0006                  		move.b	6(a6),d0
+0000D882 6700                       		beq.s	loc_72510
+0000D884 532E 0006                  		subq.b	#1,6(a6)
+0000D888 4E75                       		rts	
+0000D88A                            ; ===========================================================================
+0000D88A                            
+0000D88A                            loc_72510:
+0000D88A 532E 0004                  		subq.b	#1,4(a6)
+0000D88E 6700 0000                  		beq.w	Sound_E4
+0000D892 1D7C 0003 0006             		move.b	#3,6(a6)
+0000D898 4BEE 0070                  		lea	$70(a6),a5
+0000D89C 7E05                       		moveq	#5,d7
+0000D89E                            
+0000D89E                            loc_72524:
+0000D89E 4A15                       		tst.b	(a5)
+0000D8A0 6A00                       		bpl.s	loc_72538
+0000D8A2 522D 0009                  		addq.b	#1,9(a5)
+0000D8A6 6A00                       		bpl.s	loc_72534
+0000D8A8 0895 0007                  		bclr	#7,(a5)
+0000D8AC 6000                       		bra.s	loc_72538
+0000D8AE                            ; ===========================================================================
+0000D8AE                            
+0000D8AE                            loc_72534:
+0000D8AE 4EBA 0000                  		jsr	sub_72CB4(pc)
+0000D8B2                            
+0000D8B2                            loc_72538:
+0000D8B2 DAFC 0030                  		adda.w	#$30,a5
+0000D8B6 51CF FFE6                  		dbf	d7,loc_72524
+0000D8BA                            
+0000D8BA 7E02                       		moveq	#2,d7
+0000D8BC                            
+0000D8BC                            loc_72542:
+0000D8BC 4A15                       		tst.b	(a5)
+0000D8BE 6A00                       		bpl.s	loc_72560
+0000D8C0 522D 0009                  		addq.b	#1,9(a5)
+0000D8C4 0C2D 0010 0009             		cmpi.b	#$10,9(a5)
+0000D8CA 6500                       		bcs.s	loc_72558
+0000D8CC 0895 0007                  		bclr	#7,(a5)
+0000D8D0 6000                       		bra.s	loc_72560
+0000D8D2                            ; ===========================================================================
+0000D8D2                            
+0000D8D2                            loc_72558:
+0000D8D2 1C2D 0009                  		move.b	9(a5),d6
+0000D8D6 4EBA 0000                  		jsr	sub_7296A(pc)
+0000D8DA                            
+0000D8DA                            loc_72560:
+0000D8DA DAFC 0030                  		adda.w	#$30,a5
+0000D8DE 51CF FFDC                  		dbf	d7,loc_72542
+0000D8E2                            
+0000D8E2 4E75                       		rts	
+0000D8E4                            ; End of function sub_72504
+0000D8E4                            
+0000D8E4                            
+0000D8E4                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D8E4                            
+0000D8E4                            
+0000D8E4                            sub_7256A:				; XREF: Sound_E4; sub_725CA
+0000D8E4 7602                       		moveq	#2,d3
+0000D8E6 7028                       		moveq	#$28,d0
+0000D8E8                            
+0000D8E8                            loc_7256E:
+0000D8E8 1203                       		move.b	d3,d1
+0000D8EA 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D8EE 5801                       		addq.b	#4,d1
+0000D8F0 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D8F4 51CB FFF2                  		dbf	d3,loc_7256E
+0000D8F8                            
+0000D8F8 7040                       		moveq	#$40,d0
+0000D8FA 727F                       		moveq	#$7F,d1
+0000D8FC 7802                       		moveq	#2,d4
+0000D8FE                            
+0000D8FE                            loc_72584:
+0000D8FE 7603                       		moveq	#3,d3
+0000D900                            
+0000D900                            loc_72586:
+0000D900 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D904 4EBA 0000                  		jsr	sub_72764(pc)
+0000D908 5840                       		addq.w	#4,d0
+0000D90A 51CB FFF4                  		dbf	d3,loc_72586
+0000D90E                            
+0000D90E 0400 000F                  		subi.b	#$F,d0
+0000D912 51CC FFEA                  		dbf	d4,loc_72584
+0000D916                            
+0000D916 4E75                       		rts	
+0000D918                            ; End of function sub_7256A
+0000D918                            
+0000D918                            ; ===========================================================================
+0000D918                            ; ---------------------------------------------------------------------------
+0000D918                            ; Stop music
+0000D918                            ; ---------------------------------------------------------------------------
+0000D918                            
+0000D918                            Sound_E4:				; XREF: Sound_ChkValue; Sound_ExIndex; sub_72504
+0000D918 702B                       		moveq	#$2B,d0
+0000D91A 123C 0080                  		move.b	#$80,d1
+0000D91E 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D922 7027                       		moveq	#$27,d0
+0000D924 7200                       		moveq	#0,d1
+0000D926 4EBA 0000                  		jsr	sub_7272E(pc)
+0000D92A 204E                       		movea.l	a6,a0
+0000D92C 303C 00E3                  		move.w	#$E3,d0
+0000D930                            
+0000D930                            loc_725B6:
+0000D930 4298                       		clr.l	(a0)+
+0000D932 51C8 FFFC                  		dbf	d0,loc_725B6
+0000D936                            
+0000D936 1D7C 0080 0009             		move.b	#$80,9(a6)	; set music to $80 (silence)
+0000D93C 4EBA FFA6                  		jsr	sub_7256A(pc)
+0000D940 6000 0000                  		bra.w	sub_729B6
+0000D944                            
+0000D944                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D944                            
+0000D944                            
+0000D944                            sub_725CA:				; XREF: Sound_ChkValue
+0000D944 204E                       		movea.l	a6,a0
+0000D946 122E 0000                  		move.b	0(a6),d1
+0000D94A 142E 0027                  		move.b	$27(a6),d2
+0000D94E 162E 002A                  		move.b	$2A(a6),d3
+0000D952 182E 0026                  		move.b	$26(a6),d4
+0000D956 3A2E 000A                  		move.w	$A(a6),d5
+0000D95A 303C 0087                  		move.w	#$87,d0
+0000D95E                            
+0000D95E                            loc_725E4:
+0000D95E 4298                       		clr.l	(a0)+
+0000D960 51C8 FFFC                  		dbf	d0,loc_725E4
+0000D964                            
+0000D964 1D41 0000                  		move.b	d1,0(a6)
+0000D968 1D42 0027                  		move.b	d2,$27(a6)
+0000D96C 1D43 002A                  		move.b	d3,$2A(a6)
+0000D970 1D44 0026                  		move.b	d4,$26(a6)
+0000D974 3D45 000A                  		move.w	d5,$A(a6)
+0000D978 1D7C 0080 0009             		move.b	#$80,9(a6)
+0000D97E 4EBA FF64                  		jsr	sub_7256A(pc)
+0000D982 6000 0000                  		bra.w	sub_729B6
+0000D986                            ; End of function sub_725CA
+0000D986                            
+0000D986                            
+0000D986                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D986                            
+0000D986                            
+0000D986                            sub_7260C:				; XREF: sub_71B4C
+0000D986 1D6E 0002 0001             		move.b	2(a6),1(a6)
+0000D98C 41EE 004E                  		lea	$4E(a6),a0
+0000D990 7030                       		moveq	#$30,d0
+0000D992 7209                       		moveq	#9,d1
+0000D994                            
+0000D994                            loc_7261A:
+0000D994 5210                       		addq.b	#1,(a0)
+0000D996 D0C0                       		adda.w	d0,a0
+0000D998 51C9 FFFA                  		dbf	d1,loc_7261A
+0000D99C                            
+0000D99C 4E75                       		rts	
+0000D99E                            ; End of function sub_7260C
+0000D99E                            
+0000D99E                            ; ===========================================================================
+0000D99E                            ; ---------------------------------------------------------------------------
+0000D99E                            ; Speed	up music
+0000D99E                            ; ---------------------------------------------------------------------------
+0000D99E                            
+0000D99E                            Sound_E2:				; XREF: Sound_ExIndex
+0000D99E 4A2E 0027                  		tst.b	$27(a6)
+0000D9A2 6600                       		bne.s	loc_7263E
+0000D9A4 1D6E 0029 0002             		move.b	$29(a6),2(a6)
+0000D9AA 1D6E 0029 0001             		move.b	$29(a6),1(a6)
+0000D9B0 1D7C 0080 002A             		move.b	#$80,$2A(a6)
+0000D9B6 4E75                       		rts	
+0000D9B8                            ; ===========================================================================
+0000D9B8                            
+0000D9B8                            loc_7263E:
+0000D9B8 1D6E 03C9 03A2             		move.b	$3C9(a6),$3A2(a6)
+0000D9BE 1D6E 03C9 03A1             		move.b	$3C9(a6),$3A1(a6)
+0000D9C4 1D7C 0080 03CA             		move.b	#$80,$3CA(a6)
+0000D9CA 4E75                       		rts
+0000D9CC                            ; ===========================================================================
+0000D9CC                            ; ---------------------------------------------------------------------------
+0000D9CC                            ; Change music back to normal speed
+0000D9CC                            ; ---------------------------------------------------------------------------
+0000D9CC                            
+0000D9CC                            Sound_E3:				; XREF: Sound_ExIndex
+0000D9CC 4A2E 0027                  		tst.b	$27(a6)
+0000D9D0 6600                       		bne.s	loc_7266A
+0000D9D2 1D6E 0028 0002             		move.b	$28(a6),2(a6)
+0000D9D8 1D6E 0028 0001             		move.b	$28(a6),1(a6)
+0000D9DE 422E 002A                  		clr.b	$2A(a6)
+0000D9E2 4E75                       		rts	
+0000D9E4                            ; ===========================================================================
+0000D9E4                            
+0000D9E4                            loc_7266A:
+0000D9E4 1D6E 03C8 03A2             		move.b	$3C8(a6),$3A2(a6)
+0000D9EA 1D6E 03C8 03A1             		move.b	$3C8(a6),$3A1(a6)
+0000D9F0 422E 03CA                  		clr.b	$3CA(a6)
+0000D9F4 4E75                       		rts	
+0000D9F6                            
+0000D9F6                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000D9F6                            
+0000D9F6                            
+0000D9F6                            sub_7267C:				; XREF: sub_71B4C
+0000D9F6 4A2E 0025                  		tst.b	$25(a6)
+0000D9FA 6700                       		beq.s	loc_72688
+0000D9FC 532E 0025                  		subq.b	#1,$25(a6)
+0000DA00 4E75                       		rts	
+0000DA02                            ; ===========================================================================
+0000DA02                            
+0000DA02                            loc_72688:
+0000DA02 4A2E 0026                  		tst.b	$26(a6)
+0000DA06 6700                       		beq.s	loc_726D6
+0000DA08 532E 0026                  		subq.b	#1,$26(a6)
+0000DA0C 1D7C 0002 0025             		move.b	#2,$25(a6)
+0000DA12 4BEE 0070                  		lea	$70(a6),a5
+0000DA16 7E05                       		moveq	#5,d7
+0000DA18                            
+0000DA18                            loc_7269E:
+0000DA18 4A15                       		tst.b	(a5)
+0000DA1A 6A00                       		bpl.s	loc_726AA
+0000DA1C 532D 0009                  		subq.b	#1,9(a5)
+0000DA20 4EBA 0000                  		jsr	sub_72CB4(pc)
+0000DA24                            
+0000DA24                            loc_726AA:
+0000DA24 DAFC 0030                  		adda.w	#$30,a5
+0000DA28 51CF FFEE                  		dbf	d7,loc_7269E
+0000DA2C 7E02                       		moveq	#2,d7
+0000DA2E                            
+0000DA2E                            loc_726B4:
+0000DA2E 4A15                       		tst.b	(a5)
+0000DA30 6A00                       		bpl.s	loc_726CC
+0000DA32 532D 0009                  		subq.b	#1,9(a5)
+0000DA36 1C2D 0009                  		move.b	9(a5),d6
+0000DA3A 0C06 0010                  		cmpi.b	#$10,d6
+0000DA3E 6500                       		bcs.s	loc_726C8
+0000DA40 7C0F                       		moveq	#$F,d6
+0000DA42                            
+0000DA42                            loc_726C8:
+0000DA42 4EBA 0000                  		jsr	sub_7296A(pc)
+0000DA46                            
+0000DA46                            loc_726CC:
+0000DA46 DAFC 0030                  		adda.w	#$30,a5
+0000DA4A 51CF FFE2                  		dbf	d7,loc_726B4
+0000DA4E 4E75                       		rts	
+0000DA50                            ; ===========================================================================
+0000DA50                            
+0000DA50                            loc_726D6:
+0000DA50 08AE 0002 0040             		bclr	#2,$40(a6)
+0000DA56 422E 0024                  		clr.b	$24(a6)
+0000DA5A 4E75                       		rts	
+0000DA5C                            ; End of function sub_7267C
+0000DA5C                            
+0000DA5C                            ; ===========================================================================
+0000DA5C                            
+0000DA5C                            loc_726E2:				; XREF: sub_71CCA
+0000DA5C 0815 0001                  		btst	#1,(a5)
+0000DA60 6600                       		bne.s	locret_726FC
+0000DA62 0815 0002                  		btst	#2,(a5)
+0000DA66 6600                       		bne.s	locret_726FC
+0000DA68 7028                       		moveq	#$28,d0
+0000DA6A 122D 0001                  		move.b	1(a5),d1
+0000DA6E 0001 00F0                  		ori.b	#-$10,d1
+0000DA72 6000 0000                  		bra.w	sub_7272E
+0000DA76                            ; ===========================================================================
+0000DA76                            
+0000DA76                            locret_726FC:
+0000DA76 4E75                       		rts	
+0000DA78                            
+0000DA78                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DA78                            
+0000DA78                            
+0000DA78                            sub_726FE:				; XREF: sub_71CEC; sub_71D9E; Sound_ChkValue; Snd_FadeOut1
+0000DA78 0815 0004                  		btst	#4,(a5)
+0000DA7C 6600                       		bne.s	locret_72714
+0000DA7E 0815 0002                  		btst	#2,(a5)
+0000DA82 6600                       		bne.s	locret_72714
+0000DA84                            
+0000DA84                            loc_7270A:				; XREF: Snd_FadeOut2
+0000DA84 7028                       		moveq	#$28,d0
+0000DA86 122D 0001                  		move.b	1(a5),d1
+0000DA8A 6000 0000                  		bra.w	sub_7272E
+0000DA8E                            ; ===========================================================================
+0000DA8E                            
+0000DA8E                            locret_72714:
+0000DA8E 4E75                       		rts	
+0000DA90                            ; End of function sub_726FE
+0000DA90                            
+0000DA90                            ; ===========================================================================
+0000DA90                            
+0000DA90                            loc_72716:				; XREF: sub_72A5A
+0000DA90 0815 0002                  		btst	#2,(a5)
+0000DA94 6600                       		bne.s	locret_72720
+0000DA96 6000 0000                  		bra.w	sub_72722
+0000DA9A                            ; ===========================================================================
+0000DA9A                            
+0000DA9A                            locret_72720:
+0000DA9A 4E75                       		rts	
+0000DA9C                            
+0000DA9C                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DA9C                            
+0000DA9C                            
+0000DA9C                            sub_72722:				; XREF: sub_71E18; sub_72C4E; sub_72CB4
+0000DA9C 082D 0002 0001             		btst	#2,1(a5)
+0000DAA2 6600                       		bne.s	loc_7275A
+0000DAA4 D02D 0001                  		add.b	1(a5),d0
+0000DAA8                            ; End of function sub_72722
+0000DAA8                            
+0000DAA8                            
+0000DAA8                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DAA8                            
+0000DAA8                            
+0000DAA8                            sub_7272E:				; XREF: loc_71E6A
+0000DAA8 1439 00A0 4000             		move.b	($A04000).l,d2
+0000DAAE 0802 0007                  		btst	#7,d2
+0000DAB2 66F4                       		bne.s	sub_7272E
+0000DAB4 13C0 00A0 4000             		move.b	d0,($A04000).l
+0000DABA 4E71                       		nop	
+0000DABC 4E71                       		nop	
+0000DABE 4E71                       		nop	
+0000DAC0                            
+0000DAC0                            loc_72746:
+0000DAC0 1439 00A0 4000             		move.b	($A04000).l,d2
+0000DAC6 0802 0007                  		btst	#7,d2
+0000DACA 66F4                       		bne.s	loc_72746
+0000DACC                            
+0000DACC 13C1 00A0 4001             		move.b	d1,($A04001).l
+0000DAD2 4E75                       		rts
+0000DAD4                            ; End of function sub_7272E
+0000DAD4                            
+0000DAD4                            ; ===========================================================================
+0000DAD4                            
+0000DAD4                            loc_7275A:				; XREF: sub_72722
+0000DAD4 142D 0001                  		move.b	1(a5),d2
+0000DAD8 0882 0002                  		bclr	#2,d2
+0000DADC D002                       		add.b	d2,d0
+0000DADE                            
+0000DADE                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DADE                            
+0000DADE                            
+0000DADE                            sub_72764:				; XREF: loc_71E6A; Sound_ChkValue; sub_7256A; sub_72764
+0000DADE 1439 00A0 4000             		move.b	($A04000).l,d2
+0000DAE4 0802 0007                  		btst	#7,d2
+0000DAE8 66F4                       		bne.s	sub_72764
+0000DAEA 13C0 00A0 4002             		move.b	d0,($A04002).l
+0000DAF0 4E71                       		nop	
+0000DAF2 4E71                       		nop	
+0000DAF4 4E71                       		nop	
+0000DAF6                            
+0000DAF6                            loc_7277C:
+0000DAF6 1439 00A0 4000             		move.b	($A04000).l,d2
+0000DAFC 0802 0007                  		btst	#7,d2
+0000DB00 66F4                       		bne.s	loc_7277C
+0000DB02                            
+0000DB02 13C1 00A0 4003             		move.b	d1,($A04003).l
+0000DB08 4E75                       		rts	
+0000DB0A                            ; End of function sub_72764
+0000DB0A                            
+0000DB0A                            ; ===========================================================================
+0000DB0A 025E 0284 02AB 02D3 02FE+  word_72790:	dc.w $25E, $284, $2AB, $2D3, $2FE, $32D, $35C, $38F, $3C5
+0000DB1C 03FF 043C 047C 0A5E 0A84+  		dc.w $3FF, $43C, $47C, $A5E, $A84, $AAB, $AD3, $AFE, $B2D
+0000DB2E 0B5C 0B8F 0BC5 0BFF 0C3C+  		dc.w $B5C, $B8F, $BC5, $BFF, $C3C, $C7C, $125E,	$1284
+0000DB3E 12AB 12D3 12FE 132D 135C+  		dc.w $12AB, $12D3, $12FE, $132D, $135C,	$138F, $13C5, $13FF
+0000DB4E 143C 147C 1A5E 1A84 1AAB+  		dc.w $143C, $147C, $1A5E, $1A84, $1AAB,	$1AD3, $1AFE, $1B2D
+0000DB5E 1B5C 1B8F 1BC5 1BFF 1C3C+  		dc.w $1B5C, $1B8F, $1BC5, $1BFF, $1C3C,	$1C7C, $225E, $2284
+0000DB6E 22AB 22D3 22FE 232D 235C+  		dc.w $22AB, $22D3, $22FE, $232D, $235C,	$238F, $23C5, $23FF
+0000DB7E 243C 247C 2A5E 2A84 2AAB+  		dc.w $243C, $247C, $2A5E, $2A84, $2AAB,	$2AD3, $2AFE, $2B2D
+0000DB8E 2B5C 2B8F 2BC5 2BFF 2C3C+  		dc.w $2B5C, $2B8F, $2BC5, $2BFF, $2C3C,	$2C7C, $325E, $3284
+0000DB9E 32AB 32D3 32FE 332D 335C+  		dc.w $32AB, $32D3, $32FE, $332D, $335C,	$338F, $33C5, $33FF
+0000DBAE 343C 347C 3A5E 3A84 3AAB+  		dc.w $343C, $347C, $3A5E, $3A84, $3AAB,	$3AD3, $3AFE, $3B2D
+0000DBBE 3B5C 3B8F 3BC5 3BFF 3C3C+  		dc.w $3B5C, $3B8F, $3BC5, $3BFF, $3C3C,	$3C7C
+0000DBCA                            
+0000DBCA                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DBCA                            
+0000DBCA                            
+0000DBCA                            sub_72850:				; XREF: sub_71B4C
+0000DBCA 532D 000E                  		subq.b	#1,$E(a5)
+0000DBCE 6600                       		bne.s	loc_72866
+0000DBD0 0895 0004                  		bclr	#4,(a5)
+0000DBD4 4EBA 0000                  		jsr	sub_72878(pc)
+0000DBD8 4EBA 0000                  		jsr	sub_728DC(pc)
+0000DBDC 6000 0000                  		bra.w	loc_7292E
+0000DBE0                            ; ===========================================================================
+0000DBE0                            
+0000DBE0                            loc_72866:
+0000DBE0 4EBA F554                  		jsr	sub_71D9E(pc)
+0000DBE4 4EBA 0000                  		jsr	sub_72926(pc)
+0000DBE8 4EBA F574                  		jsr	sub_71DC6(pc)
+0000DBEC 4EBA 0000                  		jsr	sub_728E2(pc)
+0000DBF0 4E75                       		rts	
+0000DBF2                            ; End of function sub_72850
+0000DBF2                            
+0000DBF2                            
+0000DBF2                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DBF2                            
+0000DBF2                            
+0000DBF2                            sub_72878:				; XREF: sub_72850
+0000DBF2 0895 0001                  		bclr	#1,(a5)
+0000DBF6 286D 0004                  		movea.l	4(a5),a4
+0000DBFA                            
+0000DBFA                            loc_72880:
+0000DBFA 7A00                       		moveq	#0,d5
+0000DBFC 1A1C                       		move.b	(a4)+,d5
+0000DBFE 0C05 00E0                  		cmpi.b	#$E0,d5
+0000DC02 6500                       		bcs.s	loc_72890
+0000DC04 4EBA 0000                  		jsr	sub_72A5A(pc)
+0000DC08 60F0                       		bra.s	loc_72880
+0000DC0A                            ; ===========================================================================
+0000DC0A                            
+0000DC0A                            loc_72890:
+0000DC0A 4A05                       		tst.b	d5
+0000DC0C 6A00                       		bpl.s	loc_728A4
+0000DC0E 4EBA 0000                  		jsr	sub_728AC(pc)
+0000DC12 1A1C                       		move.b	(a4)+,d5
+0000DC14 4A05                       		tst.b	d5
+0000DC16 6A00                       		bpl.s	loc_728A4
+0000DC18 534C                       		subq.w	#1,a4
+0000DC1A 6000 F4DC                  		bra.w	sub_71D60
+0000DC1E                            ; ===========================================================================
+0000DC1E                            
+0000DC1E                            loc_728A4:
+0000DC1E 4EBA F4B8                  		jsr	sub_71D40(pc)
+0000DC22 6000 F4D4                  		bra.w	sub_71D60
+0000DC26                            ; End of function sub_72878
+0000DC26                            
+0000DC26                            
+0000DC26                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DC26                            
+0000DC26                            
+0000DC26                            sub_728AC:				; XREF: sub_72878
+0000DC26 0405 0081                  		subi.b	#$81,d5
+0000DC2A 6500                       		bcs.s	loc_728CA
+0000DC2C DA2D 0008                  		add.b	8(a5),d5
+0000DC30 0245 007F                  		andi.w	#$7F,d5
+0000DC34 E34D                       		lsl.w	#1,d5
+0000DC36 41FA 0000                  		lea	word_729CE(pc),a0
+0000DC3A 3B70 5000 0010             		move.w	(a0,d5.w),$10(a5)
+0000DC40 6000 F4B6                  		bra.w	sub_71D60
+0000DC44                            ; ===========================================================================
+0000DC44                            
+0000DC44                            loc_728CA:
+0000DC44 08D5 0001                  		bset	#1,(a5)
+0000DC48 3B7C FFFF 0010             		move.w	#-1,$10(a5)
+0000DC4E 4EBA F4A8                  		jsr	sub_71D60(pc)
+0000DC52 6000 0000                  		bra.w	sub_729A0
+0000DC56                            ; End of function sub_728AC
+0000DC56                            
+0000DC56                            
+0000DC56                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DC56                            
+0000DC56                            
+0000DC56                            sub_728DC:				; XREF: sub_72850
+0000DC56 3C2D 0010                  		move.w	$10(a5),d6
+0000DC5A 6B00                       		bmi.s	loc_72920
+0000DC5C                            ; End of function sub_728DC
+0000DC5C                            
+0000DC5C                            
+0000DC5C                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DC5C                            
+0000DC5C                            
+0000DC5C                            sub_728E2:				; XREF: sub_72850
+0000DC5C 102D 001E                  		move.b	$1E(a5),d0
+0000DC60 4880                       		ext.w	d0
+0000DC62 DC40                       		add.w	d0,d6
+0000DC64 0815 0002                  		btst	#2,(a5)
+0000DC68 6600                       		bne.s	locret_7291E
+0000DC6A 0815 0001                  		btst	#1,(a5)
+0000DC6E 6600                       		bne.s	locret_7291E
+0000DC70 102D 0001                  		move.b	1(a5),d0
+0000DC74 0C00 00E0                  		cmpi.b	#$E0,d0
+0000DC78 6600                       		bne.s	loc_72904
+0000DC7A 103C 00C0                  		move.b	#$C0,d0
+0000DC7E                            
+0000DC7E                            loc_72904:
+0000DC7E 3206                       		move.w	d6,d1
+0000DC80 0201 000F                  		andi.b	#$F,d1
+0000DC84 8001                       		or.b	d1,d0
+0000DC86 E84E                       		lsr.w	#4,d6
+0000DC88 0206 003F                  		andi.b	#$3F,d6
+0000DC8C 13C0 00C0 0011             		move.b	d0,($C00011).l
+0000DC92 13C6 00C0 0011             		move.b	d6,($C00011).l
+0000DC98                            
+0000DC98                            locret_7291E:
+0000DC98 4E75                       		rts	
+0000DC9A                            ; End of function sub_728E2
+0000DC9A                            
+0000DC9A                            ; ===========================================================================
+0000DC9A                            
+0000DC9A                            loc_72920:				; XREF: sub_728DC
+0000DC9A 08D5 0001                  		bset	#1,(a5)
+0000DC9E 4E75                       		rts	
+0000DCA0                            
+0000DCA0                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DCA0                            
+0000DCA0                            
+0000DCA0                            sub_72926:				; XREF: sub_72850
+0000DCA0 4A2D 000B                  		tst.b	$B(a5)
+0000DCA4 6700 0000                  		beq.w	locret_7298A
+0000DCA8                            
+0000DCA8                            loc_7292E:				; XREF: sub_72850
+0000DCA8 1C2D 0009                  		move.b	9(a5),d6
+0000DCAC 7000                       		moveq	#0,d0
+0000DCAE 102D 000B                  		move.b	$B(a5),d0
+0000DCB2 6700                       		beq.s	sub_7296A
+0000DCB4 2079 0000 CD2E             		movea.l	(Go_PSGIndex).l,a0
+0000DCBA 5340                       		subq.w	#1,d0
+0000DCBC E548                       		lsl.w	#2,d0
+0000DCBE 2070 0000                  		movea.l	(a0,d0.w),a0
+0000DCC2 102D 000C                  		move.b	$C(a5),d0
+0000DCC6 1030 0000                  		move.b	(a0,d0.w),d0
+0000DCCA 522D 000C                  		addq.b	#1,$C(a5)
+0000DCCE 0800 0007                  		btst	#7,d0
+0000DCD2 6700                       		beq.s	loc_72960
+0000DCD4 0C00 0080                  		cmpi.b	#$80,d0
+0000DCD8 6700                       		beq.s	loc_7299A
+0000DCDA                            
+0000DCDA                            loc_72960:
+0000DCDA DC40                       		add.w	d0,d6
+0000DCDC 0C06 0010                  		cmpi.b	#$10,d6
+0000DCE0 6500                       		bcs.s	sub_7296A
+0000DCE2 7C0F                       		moveq	#$F,d6
+0000DCE4                            ; End of function sub_72926
+0000DCE4                            
+0000DCE4                            
+0000DCE4                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DCE4                            
+0000DCE4                            
+0000DCE4                            sub_7296A:				; XREF: sub_72504; sub_7267C; sub_72926
+0000DCE4 0815 0001                  		btst	#1,(a5)
+0000DCE8 6600                       		bne.s	locret_7298A
+0000DCEA 0815 0002                  		btst	#2,(a5)
+0000DCEE 6600                       		bne.s	locret_7298A
+0000DCF0 0815 0004                  		btst	#4,(a5)
+0000DCF4 6600                       		bne.s	loc_7298C
+0000DCF6                            
+0000DCF6                            loc_7297C:
+0000DCF6 8C2D 0001                  		or.b	1(a5),d6
+0000DCFA 0606 0010                  		addi.b	#$10,d6
+0000DCFE 13C6 00C0 0011             		move.b	d6,($C00011).l
+0000DD04                            
+0000DD04                            locret_7298A:
+0000DD04 4E75                       		rts	
+0000DD06                            ; ===========================================================================
+0000DD06                            
+0000DD06                            loc_7298C:
+0000DD06 4A2D 0013                  		tst.b	$13(a5)
+0000DD0A 67EA                       		beq.s	loc_7297C
+0000DD0C 4A2D 0012                  		tst.b	$12(a5)
+0000DD10 66E4                       		bne.s	loc_7297C
+0000DD12 4E75                       		rts
+0000DD14                            ; End of function sub_7296A
+0000DD14                            
+0000DD14                            ; ===========================================================================
+0000DD14                            
+0000DD14                            loc_7299A:				; XREF: sub_72926
+0000DD14 532D 000C                  		subq.b	#1,$C(a5)
+0000DD18 4E75                       		rts	
+0000DD1A                            
+0000DD1A                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DD1A                            
+0000DD1A                            
+0000DD1A                            sub_729A0:				; XREF: sub_71D9E; Sound_ChkValue; Snd_FadeOut1; sub_728AC
+0000DD1A 0815 0002                  		btst	#2,(a5)
+0000DD1E 6600                       		bne.s	locret_729B4
+0000DD20                            
+0000DD20                            loc_729A6:				; XREF: Snd_FadeOut2
+0000DD20 102D 0001                  		move.b	1(a5),d0
+0000DD24 0000 001F                  		ori.b	#$1F,d0
+0000DD28 13C0 00C0 0011             		move.b	d0,($C00011).l
+0000DD2E                            
+0000DD2E                            locret_729B4:
+0000DD2E 4E75                       		rts	
+0000DD30                            ; End of function sub_729A0
+0000DD30                            
+0000DD30                            
+0000DD30                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DD30                            
+0000DD30                            
+0000DD30                            sub_729B6:				; XREF: loc_71E7C
+0000DD30 41F9 00C0 0011             		lea	($C00011).l,a0
+0000DD36 10BC 009F                  		move.b	#$9F,(a0)
+0000DD3A 10BC 00BF                  		move.b	#$BF,(a0)
+0000DD3E 10BC 00DF                  		move.b	#$DF,(a0)
+0000DD42 10BC 00FF                  		move.b	#$FF,(a0)
+0000DD46 4E75                       		rts	
+0000DD48                            ; End of function sub_729B6
+0000DD48                            
+0000DD48                            ; ===========================================================================
+0000DD48 0356 0326 02F9 02CE 02A5+  word_729CE:	dc.w $356, $326, $2F9, $2CE, $2A5, $280, $25C, $23A, $21A
+0000DD5A 01FB 01DF 01C4 01AB 0193+  		dc.w $1FB, $1DF, $1C4, $1AB, $193, $17D, $167, $153, $140
+0000DD6C 012E 011D 010D 00FE 00EF+  		dc.w $12E, $11D, $10D, $FE, $EF, $E2, $D6, $C9,	$BE, $B4
+0000DD80 00A9 00A0 0097 008F 0087+  		dc.w $A9, $A0, $97, $8F, $87, $7F, $78,	$71, $6B, $65
+0000DD94 005F 005A 0055 0050 004B+  		dc.w $5F, $5A, $55, $50, $4B, $47, $43,	$40, $3C, $39
+0000DDA8 0036 0033 0030 002D 002B+  		dc.w $36, $33, $30, $2D, $2B, $28, $26,	$24, $22, $20
+0000DDBC 001F 001D 001B 001A 0018+  		dc.w $1F, $1D, $1B, $1A, $18, $17, $16,	$15, $13, $12
+0000DDD0 0011 0000                  		dc.w $11, 0
+0000DDD4                            
+0000DDD4                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DDD4                            
+0000DDD4                            
+0000DDD4                            sub_72A5A:				; XREF: sub_71C4E; sub_71CEC; sub_72878
+0000DDD4 0445 00E0                  		subi.w	#$E0,d5
+0000DDD8 E54D                       		lsl.w	#2,d5
+0000DDDA 4EFB 5000                  		jmp	loc_72A64(pc,d5.w)
+0000DDDE                            ; End of function sub_72A5A
+0000DDDE                            
+0000DDDE                            ; ===========================================================================
+0000DDDE                            
+0000DDDE                            loc_72A64:
+0000DDDE 6000 0000                  		bra.w	loc_72ACC
+0000DDE2                            ; ===========================================================================
+0000DDE2 6000 0000                  		bra.w	loc_72AEC
+0000DDE6                            ; ===========================================================================
+0000DDE6 6000 0000                  		bra.w	loc_72AF2
+0000DDEA                            ; ===========================================================================
+0000DDEA 6000 0000                  		bra.w	loc_72AF8
+0000DDEE                            ; ===========================================================================
+0000DDEE 6000 0000                  		bra.w	loc_72B14
+0000DDF2                            ; ===========================================================================
+0000DDF2 6000 0000                  		bra.w	loc_72B9E
+0000DDF6                            ; ===========================================================================
+0000DDF6 6000 0000                  		bra.w	loc_72BA4
+0000DDFA                            ; ===========================================================================
+0000DDFA 6000 0000                  		bra.w	loc_72BAE
+0000DDFE                            ; ===========================================================================
+0000DDFE 6000 0000                  		bra.w	loc_72BB4
+0000DE02                            ; ===========================================================================
+0000DE02 6000 0000                  		bra.w	loc_72BBE
+0000DE06                            ; ===========================================================================
+0000DE06 6000 0000                  		bra.w	loc_72BC6
+0000DE0A                            ; ===========================================================================
+0000DE0A 6000 0000                  		bra.w	loc_72BD0
+0000DE0E                            ; ===========================================================================
+0000DE0E 6000 0000                  		bra.w	loc_72BE6
+0000DE12                            ; ===========================================================================
+0000DE12 6000 0000                  		bra.w	loc_72BEE
+0000DE16                            ; ===========================================================================
+0000DE16 6000 0000                  		bra.w	loc_72BF4
+0000DE1A                            ; ===========================================================================
+0000DE1A 6000 0000                  		bra.w	loc_72C26
+0000DE1E                            ; ===========================================================================
+0000DE1E 6000 0000                  		bra.w	loc_72D30
+0000DE22                            ; ===========================================================================
+0000DE22 6000 0000                  		bra.w	loc_72D52
+0000DE26                            ; ===========================================================================
+0000DE26 6000 0000                  		bra.w	loc_72D58
+0000DE2A                            ; ===========================================================================
+0000DE2A 6000 0000                  		bra.w	loc_72E06
+0000DE2E                            ; ===========================================================================
+0000DE2E 6000 0000                  		bra.w	loc_72E20
+0000DE32                            ; ===========================================================================
+0000DE32 6000 0000                  		bra.w	loc_72E26
+0000DE36                            ; ===========================================================================
+0000DE36 6000 0000                  		bra.w	loc_72E2C
+0000DE3A                            ; ===========================================================================
+0000DE3A 6000 0000                  		bra.w	loc_72E38
+0000DE3E                            ; ===========================================================================
+0000DE3E 6000 0000                  		bra.w	loc_72E52
+0000DE42                            ; ===========================================================================
+0000DE42 6000 0000                  		bra.w	loc_72E64
+0000DE46                            ; ===========================================================================
+0000DE46                            
+0000DE46                            loc_72ACC:				; XREF: loc_72A64
+0000DE46 121C                       		move.b	(a4)+,d1
+0000DE48 4A2D 0001                  		tst.b	1(a5)
+0000DE4C 6B00                       		bmi.s	locret_72AEA
+0000DE4E 102D 000A                  		move.b	$A(a5),d0
+0000DE52 0200 0037                  		andi.b	#$37,d0
+0000DE56 8200                       		or.b	d0,d1
+0000DE58 1B41 000A                  		move.b	d1,$A(a5)
+0000DE5C 103C 00B4                  		move.b	#$B4,d0
+0000DE60 6000 FC2E                  		bra.w	loc_72716
+0000DE64                            ; ===========================================================================
+0000DE64                            
+0000DE64                            locret_72AEA:
+0000DE64 4E75                       		rts	
+0000DE66                            ; ===========================================================================
+0000DE66                            
+0000DE66                            loc_72AEC:				; XREF: loc_72A64
+0000DE66 1B5C 001E                  		move.b	(a4)+,$1E(a5)
+0000DE6A 4E75                       		rts	
+0000DE6C                            ; ===========================================================================
+0000DE6C                            
+0000DE6C                            loc_72AF2:				; XREF: loc_72A64
+0000DE6C 1D5C 0007                  		move.b	(a4)+,7(a6)
+0000DE70 4E75                       		rts	
+0000DE72                            ; ===========================================================================
+0000DE72                            
+0000DE72                            loc_72AF8:				; XREF: loc_72A64
+0000DE72 7000                       		moveq	#0,d0
+0000DE74 102D 000D                  		move.b	$D(a5),d0
+0000DE78 2875 0000                  		movea.l	(a5,d0.w),a4
+0000DE7C 2BBC 0000 0000 0000        		move.l	#0,(a5,d0.w)
+0000DE84 544C                       		addq.w	#2,a4
+0000DE86 5800                       		addq.b	#4,d0
+0000DE88 1B40 000D                  		move.b	d0,$D(a5)
+0000DE8C 4E75                       		rts	
+0000DE8E                            ; ===========================================================================
+0000DE8E                            
+0000DE8E                            loc_72B14:				; XREF: loc_72A64
+0000DE8E 204E                       		movea.l	a6,a0
+0000DE90 43EE 03A0                  		lea	$3A0(a6),a1
+0000DE94 303C 0087                  		move.w	#$87,d0
+0000DE98                            
+0000DE98                            loc_72B1E:
+0000DE98 20D9                       		move.l	(a1)+,(a0)+
+0000DE9A 51C8 FFFC                  		dbf	d0,loc_72B1E
+0000DE9E                            
+0000DE9E 08EE 0002 0040             		bset	#2,$40(a6)
+0000DEA4 264D                       		movea.l	a5,a3
+0000DEA6 1C3C 0028                  		move.b	#$28,d6
+0000DEAA 9C2E 0026                  		sub.b	$26(a6),d6
+0000DEAE 7E05                       		moveq	#5,d7
+0000DEB0 4BEE 0070                  		lea	$70(a6),a5
+0000DEB4                            
+0000DEB4                            loc_72B3A:
+0000DEB4 0815 0007                  		btst	#7,(a5)
+0000DEB8 6700                       		beq.s	loc_72B5C
+0000DEBA 08D5 0001                  		bset	#1,(a5)
+0000DEBE DD2D 0009                  		add.b	d6,9(a5)
+0000DEC2 0815 0002                  		btst	#2,(a5)
+0000DEC6 6600                       		bne.s	loc_72B5C
+0000DEC8 7000                       		moveq	#0,d0
+0000DECA 102D 000B                  		move.b	$B(a5),d0
+0000DECE 226E 0018                  		movea.l	$18(a6),a1
+0000DED2 4EBA 0000                  		jsr	sub_72C4E(pc)
+0000DED6                            
+0000DED6                            loc_72B5C:
+0000DED6 DAFC 0030                  		adda.w	#$30,a5
+0000DEDA 51CF FFD8                  		dbf	d7,loc_72B3A
+0000DEDE                            
+0000DEDE 7E02                       		moveq	#2,d7
+0000DEE0                            
+0000DEE0                            loc_72B66:
+0000DEE0 0815 0007                  		btst	#7,(a5)
+0000DEE4 6700                       		beq.s	loc_72B78
+0000DEE6 08D5 0001                  		bset	#1,(a5)
+0000DEEA 4EBA FE2E                  		jsr	sub_729A0(pc)
+0000DEEE DD2D 0009                  		add.b	d6,9(a5)
+0000DEF2                            
+0000DEF2                            loc_72B78:
+0000DEF2 DAFC 0030                  		adda.w	#$30,a5
+0000DEF6 51CF FFE8                  		dbf	d7,loc_72B66
+0000DEFA 2A4B                       		movea.l	a3,a5
+0000DEFC 1D7C 0080 0024             		move.b	#$80,$24(a6)
+0000DF02 1D7C 0028 0026             		move.b	#$28,$26(a6)
+0000DF08 422E 0027                  		clr.b	$27(a6)
+0000DF0C 33FC 0000 00A1 1100        		move.w	#0,($A11100).l
+0000DF14 504F                       		addq.w	#8,sp
+0000DF16 4E75                       		rts	
+0000DF18                            ; ===========================================================================
+0000DF18                            
+0000DF18                            loc_72B9E:				; XREF: loc_72A64
+0000DF18 1B5C 0002                  		move.b	(a4)+,2(a5)
+0000DF1C 4E75                       		rts	
+0000DF1E                            ; ===========================================================================
+0000DF1E                            
+0000DF1E                            loc_72BA4:				; XREF: loc_72A64
+0000DF1E 101C                       		move.b	(a4)+,d0
+0000DF20 D12D 0009                  		add.b	d0,9(a5)
+0000DF24 6000 0000                  		bra.w	sub_72CB4
+0000DF28                            ; ===========================================================================
+0000DF28                            
+0000DF28                            loc_72BAE:				; XREF: loc_72A64
+0000DF28 08D5 0004                  		bset	#4,(a5)
+0000DF2C 4E75                       		rts	
+0000DF2E                            ; ===========================================================================
+0000DF2E                            
+0000DF2E                            loc_72BB4:				; XREF: loc_72A64
+0000DF2E 1B54 0012                  		move.b	(a4),$12(a5)
+0000DF32 1B5C 0013                  		move.b	(a4)+,$13(a5)
+0000DF36 4E75                       		rts
+0000DF38                            ; ===========================================================================
+0000DF38                            
+0000DF38                            loc_72BBE:				; XREF: loc_72A64
+0000DF38 101C                       		move.b	(a4)+,d0
+0000DF3A D12D 0008                  		add.b	d0,8(a5)
+0000DF3E 4E75                       		rts	
+0000DF40                            ; ===========================================================================
+0000DF40                            
+0000DF40                            loc_72BC6:				; XREF: loc_72A64
+0000DF40 1D54 0002                  		move.b	(a4),2(a6)
+0000DF44 1D5C 0001                  		move.b	(a4)+,1(a6)
+0000DF48 4E75                       		rts	
+0000DF4A                            ; ===========================================================================
+0000DF4A                            
+0000DF4A                            loc_72BD0:				; XREF: loc_72A64
+0000DF4A 41EE 0040                  		lea	$40(a6),a0
+0000DF4E 101C                       		move.b	(a4)+,d0
+0000DF50 7230                       		moveq	#$30,d1
+0000DF52 7409                       		moveq	#9,d2
+0000DF54                            
+0000DF54                            loc_72BDA:
+0000DF54 1140 0002                  		move.b	d0,2(a0)
+0000DF58 D0C1                       		adda.w	d1,a0
+0000DF5A 51CA FFF8                  		dbf	d2,loc_72BDA
+0000DF5E                            
+0000DF5E 4E75                       		rts	
+0000DF60                            ; ===========================================================================
+0000DF60                            
+0000DF60                            loc_72BE6:				; XREF: loc_72A64
+0000DF60 101C                       		move.b	(a4)+,d0
+0000DF62 D12D 0009                  		add.b	d0,9(a5)
+0000DF66 4E75                       		rts	
+0000DF68                            ; ===========================================================================
+0000DF68                            
+0000DF68                            loc_72BEE:				; XREF: loc_72A64
+0000DF68 422E 002C                  		clr.b	$2C(a6)
+0000DF6C 4E75                       		rts
+0000DF6E                            ; ===========================================================================
+0000DF6E                            
+0000DF6E                            loc_72BF4:				; XREF: loc_72A64
+0000DF6E 0895 0007                  		bclr	#7,(a5)
+0000DF72 0895 0004                  		bclr	#4,(a5)
+0000DF76 4EBA FB00                  		jsr	sub_726FE(pc)
+0000DF7A 4A2E 0250                  		tst.b	$250(a6)
+0000DF7E 6B00                       		bmi.s	loc_72C22
+0000DF80 264D                       		movea.l	a5,a3
+0000DF82 4BEE 0100                  		lea	$100(a6),a5
+0000DF86 226E 0018                  		movea.l	$18(a6),a1
+0000DF8A 0895 0002                  		bclr	#2,(a5)
+0000DF8E 08D5 0001                  		bset	#1,(a5)
+0000DF92 102D 000B                  		move.b	$B(a5),d0
+0000DF96 4EBA 0000                  		jsr	sub_72C4E(pc)
+0000DF9A 2A4B                       		movea.l	a3,a5
+0000DF9C                            
+0000DF9C                            loc_72C22:
+0000DF9C 504F                       		addq.w	#8,sp
+0000DF9E 4E75                       		rts	
+0000DFA0                            ; ===========================================================================
+0000DFA0                            
+0000DFA0                            loc_72C26:				; XREF: loc_72A64
+0000DFA0 7000                       		moveq	#0,d0
+0000DFA2 101C                       		move.b	(a4)+,d0
+0000DFA4 1B40 000B                  		move.b	d0,$B(a5)
+0000DFA8 0815 0002                  		btst	#2,(a5)
+0000DFAC 6600 0000                  		bne.w	locret_72CAA
+0000DFB0 226E 0018                  		movea.l	$18(a6),a1
+0000DFB4 4A2E 000E                  		tst.b	$E(a6)
+0000DFB8 6700                       		beq.s	sub_72C4E
+0000DFBA 226D 0020                  		movea.l	$20(a5),a1
+0000DFBE 4A2E 000E                  		tst.b	$E(a6)
+0000DFC2 6B00                       		bmi.s	sub_72C4E
+0000DFC4 226E 0020                  		movea.l	$20(a6),a1
+0000DFC8                            
+0000DFC8                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000DFC8                            
+0000DFC8                            
+0000DFC8                            sub_72C4E:				; XREF: Snd_FadeOut1; et al
+0000DFC8 5340                       		subq.w	#1,d0
+0000DFCA 6B00                       		bmi.s	loc_72C5C
+0000DFCC 323C 0019                  		move.w	#$19,d1
+0000DFD0                            
+0000DFD0                            loc_72C56:
+0000DFD0 D2C1                       		adda.w	d1,a1
+0000DFD2 51C8 FFFC                  		dbf	d0,loc_72C56
+0000DFD6                            
+0000DFD6                            loc_72C5C:
+0000DFD6 1219                       		move.b	(a1)+,d1
+0000DFD8 1B41 001F                  		move.b	d1,$1F(a5)
+0000DFDC 1801                       		move.b	d1,d4
+0000DFDE 103C 00B0                  		move.b	#$B0,d0
+0000DFE2 4EBA FAB8                  		jsr	sub_72722(pc)
+0000DFE6 45FA 0000                  		lea	byte_72D18(pc),a2
+0000DFEA 7613                       		moveq	#$13,d3
+0000DFEC                            
+0000DFEC                            loc_72C72:
+0000DFEC 101A                       		move.b	(a2)+,d0
+0000DFEE 1219                       		move.b	(a1)+,d1
+0000DFF0 4EBA FAAA                  		jsr	sub_72722(pc)
+0000DFF4 51CB FFF6                  		dbf	d3,loc_72C72
+0000DFF8 7A03                       		moveq	#3,d5
+0000DFFA 0244 0007                  		andi.w	#7,d4
+0000DFFE 183B 4000                  		move.b	byte_72CAC(pc,d4.w),d4
+0000E002 162D 0009                  		move.b	9(a5),d3
+0000E006                            
+0000E006                            loc_72C8C:
+0000E006 101A                       		move.b	(a2)+,d0
+0000E008 1219                       		move.b	(a1)+,d1
+0000E00A E20C                       		lsr.b	#1,d4
+0000E00C 6400                       		bcc.s	loc_72C96
+0000E00E D203                       		add.b	d3,d1
+0000E010                            
+0000E010                            loc_72C96:
+0000E010 4EBA FA8A                  		jsr	sub_72722(pc)
+0000E014 51CD FFF0                  		dbf	d5,loc_72C8C
+0000E018 103C 00B4                  		move.b	#$B4,d0
+0000E01C 122D 000A                  		move.b	$A(a5),d1
+0000E020 4EBA FA7A                  		jsr	sub_72722(pc)
+0000E024                            
+0000E024                            locret_72CAA:
+0000E024 4E75                       		rts	
+0000E026                            ; End of function sub_72C4E
+0000E026                            
+0000E026                            ; ===========================================================================
+0000E026 0808 0808 0A0E 0E0F        byte_72CAC:	dc.b 8,	8, 8, 8, $A, $E, $E, $F
+0000E02E                            
+0000E02E                            ; ||||||||||||||| S U B	R O U T	I N E |||||||||||||||||||||||||||||||||||||||
+0000E02E                            
+0000E02E                            
+0000E02E                            sub_72CB4:				; XREF: sub_72504; sub_7267C; loc_72BA4
+0000E02E 0815 0002                  		btst	#2,(a5)
+0000E032 6600                       		bne.s	locret_72D16
+0000E034 7000                       		moveq	#0,d0
+0000E036 102D 000B                  		move.b	$B(a5),d0
+0000E03A 226E 0018                  		movea.l	$18(a6),a1
+0000E03E 4A2E 000E                  		tst.b	$E(a6)
+0000E042 6700                       		beq.s	loc_72CD8
+0000E044 226E 0020                  		movea.l	$20(a6),a1
+0000E048 4A2E 000E                  		tst.b	$E(a6)
+0000E04C 6B00                       		bmi.s	loc_72CD8
+0000E04E 226E 0020                  		movea.l	$20(a6),a1
+0000E052                            
+0000E052                            loc_72CD8:
+0000E052 5340                       		subq.w	#1,d0
+0000E054 6B00                       		bmi.s	loc_72CE6
+0000E056 323C 0019                  		move.w	#$19,d1
+0000E05A                            
+0000E05A                            loc_72CE0:
+0000E05A D2C1                       		adda.w	d1,a1
+0000E05C 51C8 FFFC                  		dbf	d0,loc_72CE0
+0000E060                            
+0000E060                            loc_72CE6:
+0000E060 D2FC 0015                  		adda.w	#$15,a1
+0000E064 45FA 0000                  		lea	byte_72D2C(pc),a2
+0000E068 102D 001F                  		move.b	$1F(a5),d0
+0000E06C 0240 0007                  		andi.w	#7,d0
+0000E070 183B 00B4                  		move.b	byte_72CAC(pc,d0.w),d4
+0000E074 162D 0009                  		move.b	9(a5),d3
+0000E078 6B00                       		bmi.s	locret_72D16
+0000E07A 7A03                       		moveq	#3,d5
+0000E07C                            
+0000E07C                            loc_72D02:
+0000E07C 101A                       		move.b	(a2)+,d0
+0000E07E 1219                       		move.b	(a1)+,d1
+0000E080 E20C                       		lsr.b	#1,d4
+0000E082 6400                       		bcc.s	loc_72D12
+0000E084 D203                       		add.b	d3,d1
+0000E086 6500                       		bcs.s	loc_72D12
+0000E088 4EBA FA12                  		jsr	sub_72722(pc)
+0000E08C                            
+0000E08C                            loc_72D12:
+0000E08C 51CD FFEE                  		dbf	d5,loc_72D02
+0000E090                            
+0000E090                            locret_72D16:
+0000E090 4E75                       		rts	
+0000E092                            ; End of function sub_72CB4
+0000E092                            
+0000E092                            ; ===========================================================================
+0000E092 3038 343C 5058 545C 6068   byte_72D18:	dc.b $30, $38, $34, $3C, $50, $58, $54,	$5C, $60, $68
+0000E09C 646C 7078 747C 8088 848C   		dc.b $64, $6C, $70, $78, $74, $7C, $80,	$88, $84, $8C
+0000E0A6 4048 444C                  byte_72D2C:	dc.b $40, $48, $44, $4C
+0000E0AA                            ; ===========================================================================
+0000E0AA                            
+0000E0AA                            loc_72D30:				; XREF: loc_72A64
+0000E0AA 08D5 0003                  		bset	#3,(a5)
+0000E0AE 2B4C 0014                  		move.l	a4,$14(a5)
+0000E0B2 1B5C 0018                  		move.b	(a4)+,$18(a5)
+0000E0B6 1B5C 0019                  		move.b	(a4)+,$19(a5)
+0000E0BA 1B5C 001A                  		move.b	(a4)+,$1A(a5)
+0000E0BE 101C                       		move.b	(a4)+,d0
+0000E0C0 E208                       		lsr.b	#1,d0
+0000E0C2 1B40 001B                  		move.b	d0,$1B(a5)
+0000E0C6 426D 001C                  		clr.w	$1C(a5)
+0000E0CA 4E75                       		rts	
+0000E0CC                            ; ===========================================================================
+0000E0CC                            
+0000E0CC                            loc_72D52:				; XREF: loc_72A64
+0000E0CC 08D5 0003                  		bset	#3,(a5)
+0000E0D0 4E75                       		rts
+0000E0D2                            ; ===========================================================================
+0000E0D2                            
+0000E0D2                            loc_72D58:				; XREF: loc_72A64
+0000E0D2 0895 0007                  		bclr	#7,(a5)
+0000E0D6 0895 0004                  		bclr	#4,(a5)
+0000E0DA 4A2D 0001                  		tst.b	1(a5)
+0000E0DE 6B00                       		bmi.s	loc_72D74
+0000E0E0 4A2E 0008                  		tst.b	8(a6)
+0000E0E4 6B00 0000                  		bmi.w	loc_72E02
+0000E0E8 4EBA F98E                  		jsr	sub_726FE(pc)
+0000E0EC 6000                       		bra.s	loc_72D78
+0000E0EE                            ; ===========================================================================
+0000E0EE                            
+0000E0EE                            loc_72D74:
+0000E0EE 4EBA FC2A                  		jsr	sub_729A0(pc)
+0000E0F2                            
+0000E0F2                            loc_72D78:
+0000E0F2 4A2E 000E                  		tst.b	$E(a6)
+0000E0F6 6A00 0000                  		bpl.w	loc_72E02
+0000E0FA 422E 0000                  		clr.b	0(a6)
+0000E0FE 7000                       		moveq	#0,d0
+0000E100 102D 0001                  		move.b	1(a5),d0
+0000E104 6B00                       		bmi.s	loc_72DCC
+0000E106 41FA F542                  		lea	dword_722CC(pc),a0
+0000E10A 264D                       		movea.l	a5,a3
+0000E10C 0C00 0004                  		cmpi.b	#4,d0
+0000E110 6600                       		bne.s	loc_72DA8
+0000E112 4A2E 0340                  		tst.b	$340(a6)
+0000E116 6A00                       		bpl.s	loc_72DA8
+0000E118 4BEE 0340                  		lea	$340(a6),a5
+0000E11C 226E 0020                  		movea.l	$20(a6),a1
+0000E120 6000                       		bra.s	loc_72DB8
+0000E122                            ; ===========================================================================
+0000E122                            
+0000E122                            loc_72DA8:
+0000E122 5500                       		subq.b	#2,d0
+0000E124 E508                       		lsl.b	#2,d0
+0000E126 2A70 0000                  		movea.l	(a0,d0.w),a5
+0000E12A 4A15                       		tst.b	(a5)
+0000E12C 6A00                       		bpl.s	loc_72DC8
+0000E12E 226E 0018                  		movea.l	$18(a6),a1
+0000E132                            
+0000E132                            loc_72DB8:
+0000E132 0895 0002                  		bclr	#2,(a5)
+0000E136 08D5 0001                  		bset	#1,(a5)
+0000E13A 102D 000B                  		move.b	$B(a5),d0
+0000E13E 4EBA FE88                  		jsr	sub_72C4E(pc)
+0000E142                            
+0000E142                            loc_72DC8:
+0000E142 2A4B                       		movea.l	a3,a5
+0000E144 6000                       		bra.s	loc_72E02
+0000E146                            ; ===========================================================================
+0000E146                            
+0000E146                            loc_72DCC:
+0000E146 41EE 0370                  		lea	$370(a6),a0
+0000E14A 4A10                       		tst.b	(a0)
+0000E14C 6A00                       		bpl.s	loc_72DE0
+0000E14E 0C00 00E0                  		cmpi.b	#$E0,d0
+0000E152 6700                       		beq.s	loc_72DEA
+0000E154 0C00 00C0                  		cmpi.b	#$C0,d0
+0000E158 6700                       		beq.s	loc_72DEA
+0000E15A                            
+0000E15A                            loc_72DE0:
+0000E15A 41FA F4EE                  		lea	dword_722CC(pc),a0
+0000E15E E608                       		lsr.b	#3,d0
+0000E160 2070 0000                  		movea.l	(a0,d0.w),a0
+0000E164                            
+0000E164                            loc_72DEA:
+0000E164 0890 0002                  		bclr	#2,(a0)
+0000E168 08D0 0001                  		bset	#1,(a0)
+0000E16C 0C28 00E0 0001             		cmpi.b	#$E0,1(a0)
+0000E172 6600                       		bne.s	loc_72E02
+0000E174 13E8 001F 00C0 0011        		move.b	$1F(a0),($C00011).l
+0000E17C                            
+0000E17C                            loc_72E02:
+0000E17C 504F                       		addq.w	#8,sp
+0000E17E 4E75                       		rts	
+0000E180                            ; ===========================================================================
+0000E180                            
+0000E180                            loc_72E06:				; XREF: loc_72A64
+0000E180 1B7C 00E0 0001             		move.b	#$E0,1(a5)
+0000E186 1B5C 001F                  		move.b	(a4)+,$1F(a5)
+0000E18A 0815 0002                  		btst	#2,(a5)
+0000E18E 6600                       		bne.s	locret_72E1E
+0000E190 13EC FFFF 00C0 0011        		move.b	-1(a4),($C00011).l
+0000E198                            
+0000E198                            locret_72E1E:
+0000E198 4E75                       		rts	
+0000E19A                            ; ===========================================================================
+0000E19A                            
+0000E19A                            loc_72E20:				; XREF: loc_72A64
+0000E19A 0895 0003                  		bclr	#3,(a5)
+0000E19E 4E75                       		rts	
+0000E1A0                            ; ===========================================================================
+0000E1A0                            
+0000E1A0                            loc_72E26:				; XREF: loc_72A64
+0000E1A0 1B5C 000B                  		move.b	(a4)+,$B(a5)
+0000E1A4 4E75                       		rts	
+0000E1A6                            ; ===========================================================================
+0000E1A6                            
+0000E1A6                            loc_72E2C:				; XREF: loc_72A64
+0000E1A6 101C                       		move.b	(a4)+,d0
+0000E1A8 E148                       		lsl.w	#8,d0
+0000E1AA 101C                       		move.b	(a4)+,d0
+0000E1AC D8C0                       		adda.w	d0,a4
+0000E1AE 534C                       		subq.w	#1,a4
+0000E1B0 4E75                       		rts	
+0000E1B2                            ; ===========================================================================
+0000E1B2                            
+0000E1B2                            loc_72E38:				; XREF: loc_72A64
+0000E1B2 7000                       		moveq	#0,d0
+0000E1B4 101C                       		move.b	(a4)+,d0
+0000E1B6 121C                       		move.b	(a4)+,d1
+0000E1B8 4A35 0024                  		tst.b	$24(a5,d0.w)
+0000E1BC 6600                       		bne.s	loc_72E48
+0000E1BE 1B81 0024                  		move.b	d1,$24(a5,d0.w)
+0000E1C2                            
+0000E1C2                            loc_72E48:
+0000E1C2 5335 0024                  		subq.b	#1,$24(a5,d0.w)
+0000E1C6 66DE                       		bne.s	loc_72E2C
+0000E1C8 544C                       		addq.w	#2,a4
+0000E1CA 4E75                       		rts	
+0000E1CC                            ; ===========================================================================
+0000E1CC                            
+0000E1CC                            loc_72E52:				; XREF: loc_72A64
+0000E1CC 7000                       		moveq	#0,d0
+0000E1CE 102D 000D                  		move.b	$D(a5),d0
+0000E1D2 5900                       		subq.b	#4,d0
+0000E1D4 2B8C 0000                  		move.l	a4,(a5,d0.w)
+0000E1D8 1B40 000D                  		move.b	d0,$D(a5)
+0000E1DC 60C8                       		bra.s	loc_72E2C
+0000E1DE                            ; ===========================================================================
+0000E1DE                            
+0000E1DE                            loc_72E64:				; XREF: loc_72A64
+0000E1DE 103C 0088                  		move.b	#$88,d0
+0000E1E2 123C 000F                  		move.b	#$F,d1
+0000E1E6 4EBA F8C0                  		jsr	sub_7272E(pc)
+0000E1EA 103C 008C                  		move.b	#$8C,d0
+0000E1EE 123C 000F                  		move.b	#$F,d1
+0000E1F2 6000 F8B4                  		bra.w	sub_7272E
+0000E1F6                            ; ===========================================================================
+0000E1F6                            Calculate_PCM:
+0000E1F6 3200                       		move.w	d0,d1
+0000E1F8 0441 0081                  		subi.w	#$81,d1
+0000E1FC D241                       		add.w	d1,d1
+0000E1FE D241                       		add.w	d1,d1
+0000E200 3401                       		move.w	d1,d2
+0000E202 D241                       		add.w	d1,d1
+0000E204 D242                       		add.w	d2,d1
+0000E206 45FB 1000                  		lea	PCM_Table(pc,d1.w),a2
+0000E20A 2252                       		movea.l	(a2),a1
+0000E20C 222A 0004                  		move.l	4(a2),d1		; Get address of the PCM sample
+0000E210 3401                       		move.w  d1,d2			; Move it to d2
+0000E212 E089                       		lsr.l	#8,d1			; Divide d1 by $100
+0000E214 0241 FF80                  		andi.w	#$FF80,d1		; Get upper 9 bits
+0000E218 4A42                       		tst.w	d2			; Test lower 16 bits of PCM sample address
+0000E21A 6B00                       		bmi.s	Calc_PCM2		; If negative already, branch
+0000E21C 0642 8000                  		addi.w	#$8000,d2		; otherwise, add $8000 to make it negative
+0000E220                            
+0000E220                            Calc_PCM2:
+0000E220 1341 0005                  		move.b  d1,5(a1)	; Move lower byte of d1 to bank byte 1 of table
+0000E224 E049                       		lsr.w	#8,d1		; shift right by 8
+0000E226 1341 0006                  		move.b  d1,6(a1)	; Move upper byte of d1 to bank byte 2 of table
+0000E22A 1282                       		move.b  d2,(a1)		; Move lower byte of d2 to location byte 1 of table
+0000E22C E04A                       		lsr.w	#8,d2		; Shift right by 8
+0000E22E 1342 0001                  		move.b  d2,1(a1)	; Move upper byte of d2 to location byte 2 of table
+0000E232 136A 0009 0002             		move.b  9(a2),2(a1)	; Move lower byte of whatever size value you want into size byte 1 of table
+0000E238 136A 0008 0003             		move.b  8(a2),3(a1)	; Move upper byte of whatever size value you want into size byte 2 of table
+0000E23E 136A 000A 0004             		move.b  $A(a2),4(a1)	; Move sample rate/pitch into pitch byte of table
+0000E244 136A 000B 0007             		move.b	$B(a2),7(a1)	; Move number of banks to span into byte 7 of table. NOTE: only applicable to multi-bank PCMs. uncomment only i you are setting one up
+0000E24A 4E75                       		rts
+0000E24C                            ;--------------------------------------------------------
+0000E24C =00A00200                  Z80_DAC_RAM	equ	$A00200
+0000E24C                            
+0000E24C                            PCM_Table:
+0000E24C 00A0 0200 0000 0000        		dc.l	Z80_DAC_RAM, DAC1		;$81
+0000E254 0352                       		dc.w	$352
+0000E256 1900                       		dc.b	$19,0
+0000E258 00A0 0208 0000 0000        		dc.l	Z80_DAC_RAM+8, DAC2		;$82
+0000E260 0770                       		dc.w	$770
+0000E262 0400                       		dc.b	$4,0
+0000E264 00A0 0210 0000 0000        		dc.l	Z80_DAC_RAM+8*2, DAC3		;$83
+0000E26C 0576                       		dc.w	$576
+0000E26E 0800                       		dc.b	$8,0
+0000E270 00A0 0218 0000 0000        		dc.l	Z80_DAC_RAM+8*3, DAC4		;$84
+0000E278 0BB5                       		dc.w	$BB5
+0000E27A 0A00                       		dc.b	$A,0
+0000E27C 00A0 0220 0000 0000        		dc.l	Z80_DAC_RAM+8*4, DAC5		;$85
+0000E284 1016                       		dc.w	$1016
+0000E286 1D00                       		dc.b	$1D,0
+0000E288 00A0 0228 0000 0000        		dc.l	Z80_DAC_RAM+8*5, DAC6		;$86
+0000E290 0622                       		dc.w	$622
+0000E292 0C00                       		dc.b	$C,0
+0000E294 00A0 0230 0000 0000        		dc.l	Z80_DAC_RAM+8*6, DAC7		;$87
+0000E29C 05C4                       		dc.w	$5C4
+0000E29E 1D00                       		dc.b	$1D,0
+0000E2A0                            
+0000E2A0                                            ;Extras
+0000E2A0 00A0 0238 0000 0000        		dc.l	Z80_DAC_RAM+8*7, DAC5		;$88
+0000E2A8 05C4                       		dc.w	$5C4
+0000E2AA 1400                       		dc.b	$14,0
+0000E2AC 00A0 0240 0000 0000        		dc.l	Z80_DAC_RAM+8*8, DAC5		;$89
+0000E2B4 05C4                       		dc.w	$5C4
+0000E2B6 1700                       		dc.b	$17,0
+0000E2B8 00A0 0248 0000 0000        		dc.l	Z80_DAC_RAM+8*9, DAC5		;$8A
+0000E2C0 05C4                       		dc.w	$5C4
+0000E2C2 1E00                       		dc.b	$1E,0
+0000E2C4 00A0 0250 0000 0000        		dc.l	Z80_DAC_RAM+8*$A, DAC5		;$8B
+0000E2CC 05C4                       		dc.w	$5C4
+0000E2CE 1F00                       		dc.b	$1F,0
+0000E2D0 00A0 0258 0000 0000        		dc.l	Z80_DAC_RAM+8*$B, DAC6		;$8C
+0000E2D8 05C4                       		dc.w	$5C4
+0000E2DA 0400                       		dc.b	4,0
+0000E2DC 00A0 0260 0000 0000        		dc.l	Z80_DAC_RAM+8*$C, DAC6		;$8D
+0000E2E4 05C4                       		dc.w	$5C4
+0000E2E6 0700                       		dc.b	7,0
+0000E2E8 00A0 0268 0000 0000        		dc.l	Z80_DAC_RAM+8*$D, DAC6		;$8E
+0000E2F0 05C4                       		dc.w	$5C4
+0000E2F2 0A00                       		dc.b	$A,0
+0000E2F4 00A0 0270 0000 0000        		dc.l	Z80_DAC_RAM+8*$E, DAC7		;$8F
+0000E2FC 05C4                       		dc.w	$5C4
+0000E2FE 0A00                       		dc.b	$A,0
+0000E300 00A0 0278 0000 0000        		dc.l	Z80_DAC_RAM+8*$F, DAC7		;$90
+0000E308 05C4                       		dc.w	$5C4
+0000E30A 0D00                       		dc.b	$D,0
+0000E30C 00A0 0280 0000 0000        		dc.l	Z80_DAC_RAM+8*$10, DAC7		;$91
+0000E314 05C4                       		dc.w	$5C4
+0000E316 1400                       		dc.b	$14,0
+0000E318 00A0 0288 0000 0000        		dc.l	Z80_DAC_RAM+8*$11, DAC7		;$92
+0000E320 05C4                       		dc.w	$5C4
+0000E322 1D00                       		dc.b	$1D,0
+0000E324 00A0 0290 0000 0000        		dc.l	Z80_DAC_RAM+8*$12, PLM_ITSMAGIC
+0000E32C 0000                       		dc.w	((PLM_ITSMAGIC_END-PLM_ITSMAGIC)/2)-$10
+0000E32E 0A                         		dc.b	$A
+0000E32F 00                         		dc.b	0
+0000E330                            
+0000E330                            ;--------------------------------------------------------
+0000E330                            Kos_Z80:
+0000E330                            		incbin	Snd\Data\z80_u.bin
+0000E5A8                            Kos_Z80_End:
+0000E5A8                            		even
+0000E5A8                            
+0000E5A8                            
+0000E5A8                            Music81:
+0000E5A8                            		incbin	snd/nyan.bin
+0000E90A 00                         		even
+0000E90A                            Music82:
+0000E90A                            		incbin	snd/thf_82.bin
+0000EFB4                            		even
+0000EFB4                            
+0000EFB4 =00000A4F                  Snd_RAM_MaxChn	equ	$A4F
+0000EFB4                            
+0000EFB4                            Snd_RAM:
+0000EFB4 0000                       		dc.w Snd_RAM_Voice-Snd_RAM		;Voice bank
+0000EFB6                            
+0000EFB6 0603                       		dc.w $0603			;Channels modifier
+0000EFB8 0103                       		dc.w $0103			;Tempo
+0000EFBA                            
+0000EFBA 0000                       		dc.w Snd_RAM_DAC-Snd_RAM	;DAC Pointer
+0000EFBC 0000                       		dc.w 0				;Unused
+0000EFBE                            
+0000EFBE 0000                       		dc.w Snd_RAM_FM1-Snd_RAM	;FM Pointer
+0000EFC0 0008                       		dc.w $0008			;Pitch,Volume
+0000EFC2                            
+0000EFC2 0000                       		dc.w Snd_RAM_FM2-Snd_RAM	;FM Pointer
+0000EFC4 0008                       		dc.w $0008			;Pitch,Volume
+0000EFC6                            
+0000EFC6 0000                       		dc.w Snd_RAM_FM3-Snd_RAM	;FM Pointer
+0000EFC8 0008                       		dc.w $0008			;Pitch,Volume
+0000EFCA                            
+0000EFCA 0000                       		dc.w Snd_RAM_FM4-Snd_RAM	;FM Pointer
+0000EFCC 0008                       		dc.w $0008			;Pitch,Volume
+0000EFCE                            
+0000EFCE 0000                       		dc.w Snd_RAM_FM5-Snd_RAM	;FM Pointer
+0000EFD0 0008                       		dc.w $0008			;Pitch,Volume
+0000EFD2                            
+0000EFD2 0000                       		dc.w Snd_RAM_PSG1-Snd_RAM	;PSG Pointer
+0000EFD4 0008                       		dc.w $0008			;Pitch,Volume
+0000EFD6 0000                       		dc.w 0				;PSG Instrument
+0000EFD8                            
+0000EFD8 0000                       		dc.w Snd_RAM_PSG2-Snd_RAM	;PSG Pointer
+0000EFDA 0008                       		dc.w $0008			;Pitch,Volume
+0000EFDC 0000                       		dc.w 0				;PSG Instrument
+0000EFDE                            
+0000EFDE 0000                       		dc.w Snd_RAM_PSG3-Snd_RAM	;PSG Pointer
+0000EFE0 0008                       		dc.w $0008			;Pitch,Volume
+0000EFE2 0000                       		dc.w 0				;PSG Instrument
+0000EFE4                            		even
+0000EFE4                            Snd_RAM_DAC:
+0000EFE4                            		dcb.b	Snd_RAM_MaxChn,0
+0000FA33 F2                         		dc.b	$F2
+0000FA34                            
+0000FA34                            Snd_RAM_FM1:
+0000FA34                            		dcb.b	Snd_RAM_MaxChn,0
+00010483 F2                         		dc.b	$F2
+00010484                            
+00010484                            Snd_RAM_FM2:
+00010484                            		dcb.b	Snd_RAM_MaxChn,0
+00010ED3 F2                         		dc.b	$F2
+00010ED4                            
+00010ED4                            Snd_RAM_FM3:
+00010ED4                            		dcb.b	Snd_RAM_MaxChn,0
+00011923 F2                         		dc.b	$F2
+00011924                            
+00011924                            Snd_RAM_FM4:
+00011924                            		dcb.b	Snd_RAM_MaxChn,0
+00012373 F2                         		dc.b	$F2
+00012374                            
+00012374                            Snd_RAM_FM5:
+00012374                            		dcb.b	Snd_RAM_MaxChn,0
+00012DC3 F2                         		dc.b	$F2
+00012DC4                            
+00012DC4                            Snd_RAM_PSG1:
+00012DC4                            		dcb.b	Snd_RAM_MaxChn,0
+00013813 F2                         		dc.b	$F2
+00013814                            
+00013814                            Snd_RAM_PSG2:
+00013814                            		dcb.b	Snd_RAM_MaxChn,0
+00014263 F2                         		dc.b	$F2
+00014264                            
+00014264                            Snd_RAM_PSG3:
+00014264                            		dcb.b	Snd_RAM_MaxChn,0
+00014CB3 F2                         		dc.b	$F2
+00014CB4                            
+00014CB4                            
+00014CB4                            Snd_RAM_Voice:
+00014CB4 FFFF FF                    		dc.b	$FF,$FF,$FF
+00014CB7                            
+00014CB7                            Snd_RAM_End:
+00014CB8 00                         		even
+00014CB8                            
+00014CB8                            ; ---------------------------------------------------------------------------
+00014CB8                            ; Sound	effect pointers
+00014CB8                            ; ---------------------------------------------------------------------------
+00014CB8 0000 0000 0000 0000 0000+  SoundIndex:	dc.l SoundA0, SoundA1, SoundA2
+00014CC4 0000 0000 0000 0000 0000+  		dc.l SoundA3, SoundA4, SoundA5
+00014CD0 0000 0000 0000 0000 0000+  		dc.l SoundA6, SoundA7, SoundA8
+00014CDC 0000 0000 0000 0000 0000+  		dc.l SoundA9, SoundAA, SoundAB
+00014CE8 0000 0000 0000 0000 0000+  		dc.l SoundAC, SoundAD, SoundAE
+00014CF4 0000 0000 0000 0000 0000+  		dc.l SoundAF, SoundB0, SoundB1
+00014D00 0000 0000 0000 0000 0000+  		dc.l SoundB2, SoundB3, SoundB4
+00014D0C 0000 0000 0000 0000 0000+  		dc.l SoundB5, SoundB6, SoundB7
+00014D18 0000 0000 0000 0000 0000+  		dc.l SoundB8, SoundB9, SoundBA
+00014D24 0000 0000 0000 0000 0000+  		dc.l SoundBB, SoundBC, SoundBD
+00014D30 0000 0000 0000 0000 0000+  		dc.l SoundBE, SoundBF, SoundC0
+00014D3C 0000 0000 0000 0000 0000+  		dc.l SoundC1, SoundC2, SoundC3
+00014D48 0000 0000 0000 0000 0000+  		dc.l SoundC4, SoundC5, SoundC6
+00014D54 0000 0000 0000 0000 0000+  		dc.l SoundC7, SoundC8, SoundC9
+00014D60 0000 0000 0000 0000 0000+  		dc.l SoundCA, SoundCB, SoundCC
+00014D6C 0000 0000 0000 0000 0000+  		dc.l SoundCD, SoundCE, SoundCF
+00014D78 0000 0000 0000 0000 0000+  		dc.l SoundD0, SoundD1, SoundD2
+00014D84 0000 0000 0000 0000 0000+  		dc.l SoundD3, SoundD4, SoundD5
+00014D90 0000 0000 0000 0000 0000+  		dc.l SoundD6, SoundD7, SoundD8
+00014D9C 0000 0000 0000 0000 0000+  		dc.l SoundD9, SoundDA, SoundDB
+00014DA8 0000 0000 0000 0000 0000+  		dc.l SoundDC, SoundDD, SoundDE
+00014DB4 0000 0000                  		dc.l SoundDF 
+00014DB8                            SoundIndex_E0plus:		
+00014DB8 0000 0000 0000 0000        		dc.l SoundE0, SoundE1
+00014DC0 0000 0000 0000 0000 0000+  		dc.l SoundE2, SoundE3, SoundE4 
+00014DCC 0000 0000 0000 0000 0000+  		dc.l SoundE5, SoundE6, SoundE7
+00014DD8 0000 0000 0000 0000 0000+  		dc.l SoundE8, SoundE9, SoundEA
+00014DE4 0000 0000 0000 0000 0000+  		dc.l SoundEB, SoundEC, SoundED
+00014DF0 0000 0000 0000 0000 0000+  		dc.l SoundEE, SoundEF, SoundF0
+00014DFC                            SoundD0Index:
+00014DFC                            		
+00014DFC                            SoundA0:	incbin	Snd\Data\soundA0.bin
+00014E12                            		even
+00014E12                            SoundA1:	incbin	Snd\Data\soundA1.bin
+00014E3C                            		even
+00014E3C                            SoundA2:	incbin	Snd\Data\soundA2.bin
+00014E5C                            		even
+00014E5C                            SoundA3:	incbin	Snd\Data\soundA3.bin
+00014E8E                            		even
+00014E8E                            SoundA4:	incbin	Snd\Data\soundA4.bin
+00014EC4                            		even
+00014EC4                            SoundA5:	incbin	Snd\Data\soundA5.bin
+00014EF0                            		even
+00014EF0                            SoundA6:	incbin	Snd\Data\soundA6.bin
+00014F20                            		even
+00014F20                            SoundA7:	incbin	Snd\Data\soundA7.bin
+00014F4C                            		even
+00014F4C                            SoundA8:	incbin	Snd\Data\soundA8.bin
+00014F5C 00                         		even
+00014F5C                            SoundA9:	incbin	Snd\Data\soundA9.bin
+00014F6E                            		even
+00014F6E                            SoundAA:	incbin	Snd\Data\soundAA.bin
+00014FB0                            		even
+00014FB0                            SoundAB:	incbin	Snd\Data\soundAB.bin
+00014FD0                            		even
+00014FD0                            SoundAC:	incbin	Snd\Data\soundAC.bin
+00015004                            		even
+00015004                            SoundAD:	incbin	Snd\Data\soundAD.bin
+0001503A                            		even
+0001503A                            SoundAE:	incbin	Snd\Data\soundAE.bin
+00015084                            		even
+00015084                            SoundAF:	incbin	Snd\Data\soundAF.bin
+000150B2                            		even
+000150B2                            SoundB0:	incbin	Snd\Data\soundB0.bin
+000150E4                            		even
+000150E4                            SoundB1:	incbin	Snd\Data\soundB1.bin
+00015110                            		even
+00015110                            SoundB2:	incbin	Snd\Data\soundB2.bin
+00015160                            		even
+00015160                            SoundB3:	incbin	Snd\Data\soundB3.bin
+000151AA                            		even
+000151AA                            SoundB4:	incbin	Snd\Data\soundB4.bin
+00015206                            		even
+00015206                            SoundB5:	incbin	Snd\Data\soundB5.bin
+00015234                            		even
+00015234                            SoundB6:	incbin	Snd\Data\soundB6.bin
+00015252                            		even
+00015252                            SoundB7:	incbin	Snd\Data\soundB7.bin
+0001528E                            		even
+0001528E                            SoundB8:	incbin	Snd\Data\soundB8.bin
+000152AC                            		even
+000152AC                            SoundB9:	incbin	Snd\Data\soundB9.bin
+00015310                            		even
+00015310                            SoundBA:	incbin	Snd\Data\soundBA.bin
+00015338                            		even
+00015338                            SoundBB:	incbin	Snd\Data\soundBB.bin
+00015364                            		even
+00015364                            SoundBC:	incbin	Snd\Data\soundBC.bin
+000153A6                            		even
+000153A6                            SoundBD:	incbin	Snd\Data\soundBD.bin
+000153FA                            		even
+000153FA                            SoundBE:	incbin	Snd\Data\soundBE.bin
+00015434                            		even
+00015434                            SoundBF:	incbin	Snd\Data\soundBF.bin
+000154A6                            		even
+000154A6                            SoundC0:	incbin	Snd\Data\soundC0.bin
+000154D8                            		even
+000154D8                            SoundC1:	incbin	Snd\Data\soundC1.bin
+00015512                            		even
+00015512                            SoundC2:	incbin	Snd\Data\soundC2.bin
+0001553C                            		even
+0001553C                            SoundC3:	incbin	Snd\Data\soundC3.bin
+000155B6                            		even
+000155B6                            SoundC4:	incbin	Snd\Data\soundC4.bin
+000155DE                            		even
+000155DE                            SoundC5:	incbin	Snd\Data\soundC5.bin
+00015646                            		even
+00015646                            SoundC6:	incbin	Snd\Data\soundC6.bin
+00015688                            		even
+00015688                            SoundC7:	incbin	Snd\Data\soundC7.bin
+000156B6                            		even
+000156B6                            SoundC8:	incbin	Snd\Data\soundC8.bin
+000156C8                            		even
+000156C8                            SoundC9:	incbin	Snd\Data\soundC9.bin
+000156F6                            		even
+000156F6                            SoundCA:	incbin	Snd\Data\soundCA.bin
+00015724                            		even
+00015724                            SoundCB:	incbin	Snd\Data\soundCB.bin
+00015770                            		even
+00015770                            SoundCC:	incbin	Snd\Data\soundCC.bin
+000157AA                            		even
+000157AA                            SoundCD:	incbin	Snd\Data\soundCD.bin
+000157B8                            		even
+000157B8                            SoundCE:	incbin	Snd\Data\soundCE.bin
+000157E6                            		even
+000157E6                            SoundCF:	incbin	Snd\Data\soundCF.bin
+0001581E                            		even
+0001581E                            SoundD0:	incbin	Snd\Data\soundD0.bin
+0001585C                            		even
+0001585C                            SoundD1:	incbin	Snd\Data\soundD1.bin
+00015896 00                         		even
+00015896                            SoundD2:	incbin	Snd\Data\soundD2.bin
+000158D4 00                         		even
+000158D4                            SoundD3:	incbin	Snd\Data\soundD3.bin
+00015914 00                         		even
+00015914                            SoundD4:	incbin	Snd\Data\soundD4.bin
+00015956 00                         		even
+00015956                            SoundD5:	incbin	Snd\Data\soundD5.bin
+00015980                            		even
+00015980                            SoundD6:	incbin	Snd\Data\soundD6.bin
+000159C6 00                         		even
+000159C6                            SoundD7:	incbin	Snd\Data\soundD7.bin
+000159EE                            		even
+000159EE                            SoundD8:	incbin	Snd\Data\soundD8.bin
+00015A18                            		even
+00015A18                            SoundD9:	incbin	Snd\Data\soundD9.bin
+00015A72 00                         		even
+00015A72                            SoundDA:	incbin	Snd\Data\soundDA.bin
+00015AA0 00                         		even
+00015AA0                            SoundDB:	incbin	Snd\Data\soundDB.bin
+00015AD4                            		even
+00015AD4                            SoundDC:	incbin	Snd\Data\soundDC.bin
+00015B1C 00                         		even
+00015B1C                            SoundDD:	incbin	Snd\Data\soundDD.bin
+00015B44                            		even
+00015B44                            SoundDE:	incbin	Snd\Data\soundDE.bin
+00015B7E                            		even
+00015B7E                            SoundDF:	incbin	Snd\Data\soundDF.bin
+00015C1A                            		even
+00015C1A                            SoundE0:	incbin	Snd\Data\soundE0.bin
+00015C56 00                         		even
+00015C56                            SoundE1:	incbin	Snd\Data\soundE1.bin
+00015CB4 00                         		even
+00015CB4                            SoundE2:	incbin	Snd\Data\soundE2.bin
+00015CEC 00                         		even
+00015CEC                            SoundE3:	incbin	Snd\Data\soundE3.bin
+00015D1C 00                         		even
+00015D1C                            SoundE4:	incbin	Snd\Data\soundE4.bin
+00015D44                            		even
+00015D44                            SoundE5:	incbin	Snd\Data\soundE5.bin
+00015D66 00                         		even
+00015D66                            SoundE6:	incbin	Snd\Data\soundE6.bin
+00015DA0                            		even
+00015DA0                            SoundE7:	incbin	Snd\Data\soundE7.bin
+00015DC2 00                         		even
+00015DC2                            SoundE8:	incbin	Snd\Data\soundE8.bin
+00015DEC                            		even
+00015DEC                            SoundE9:	incbin	Snd\Data\soundE9.bin
+00015E2A 00                         		even
+00015E2A                            SoundEA:	incbin	Snd\Data\soundEA.bin
+00015E56 00                         		even
+00015E56                            SoundEB:	incbin	Snd\Data\soundEB.bin
+00015E80                            		even
+00015E80                            SoundEC:	incbin	Snd\Data\soundEC.bin
+00015F20 00                         		even
+00015F20                            SoundED:	incbin	Snd\Data\soundED.bin
+00015F4C                            		even
+00015F4C                            SoundEE:	incbin	Snd\Data\soundEE.bin
+00015F8A                            		even
+00015F8A                            SoundEF:	incbin	Snd\Data\soundEF.bin
+00015FE6                            		even
+00015FE6                            SoundF0:	incbin	Snd\Data\soundF0.bin
+00015FFE                            		even
+00015FFE                            
+00015FFE                            
+00015FFE                            		cnop 0,$8000
+00018000                            DAC1: incbin Snd\Data\dac1d.bin
+000186A4                            		even
+000186A4                            DAC2: incbin Snd\Data\dac2d.bin
+00019584                            		even
+00019584                            DAC3: incbin Snd\Data\dac3d.bin
+0001A070                            		even
+0001A070                            DAC4: incbin Snd\Data\dac4d.bin
+0001B7DA                            		even
+0001B7DA                            DAC5: incbin Snd\Data\dac5d.bin
+0001D806                            		even
+0001D806                            DAC6: incbin Snd\Data\dac6d.bin
+0001E622                            		even
+0001E622                            DAC7: incbin Snd\Data\dac7d.bin
+0001F1AA                            		even
+0001F1AA                            
+0001F1AA                            		cnop 0,$8000
+00020000                            PLM_YAY:		incbin	"Snd\Data\YAY.bin"
+0002272E                            PLM_YAY_END:		even
+0002272E                            
+0002272E                            		cnop 0,$8000
+00028000                            PLM_ITSMAGIC:		incbin	"Snd\Data\ItsMagic.bin"
+0002BA96 00                         PLM_ITSMAGIC_END:	even
+0002BA96                            
+0002BA96                            EndofRom:
